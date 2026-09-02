@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+/* Отключаем автоматический тёмный режим: тёмные стили включаются
+   только если у страницы есть класс .dark (которого мы не ставим).
+   Значит приложение всегда показывает светлую тему с серым фоном. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme inline {
+  --font-sans: var(--font-geist-sans);
+}
+
+/* Фиксируем светлую цветовую схему, чтобы браузер не подкрашивал
+   элементы под системный тёмный режим. */
+html {
+  color-scheme: light;
+}
+
+/* Прячем горизонтальную полосу прокрутки у ленты категорий */
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
