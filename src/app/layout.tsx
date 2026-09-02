@@ -3,6 +3,7 @@ import { Geist } from "next/font/google";
 import "./globals.css";
 import { CartProvider } from "@/lib/cart";
 import { AuthProvider } from "@/lib/auth";
+import { OrdersProvider } from "@/lib/orders";
 import { Header } from "@/components/Header";
 import { BottomNav } from "@/components/BottomNav";
 import { AuthModal } from "@/components/AuthModal";
@@ -22,13 +23,15 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="ru" className={`${geistSans.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-neutral-200">
         <AuthProvider>
-          <CartProvider>
-            <Header />
-            {/* отступ снизу — чтобы контент не прятался под нижним меню */}
-            <main className="flex-1 pb-20">{children}</main>
-            <BottomNav />
-            <AuthModal />
-          </CartProvider>
+          <OrdersProvider>
+            <CartProvider>
+              <Header />
+              {/* отступ снизу — чтобы контент не прятался под нижним меню */}
+              <main className="flex-1 pb-20">{children}</main>
+              <BottomNav />
+              <AuthModal />
+            </CartProvider>
+          </OrdersProvider>
         </AuthProvider>
       </body>
     </html>

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useAuth, formatPhone } from "@/lib/auth";
 
 export function Header() {
@@ -12,7 +13,18 @@ export function Header() {
         <Link href="/" className="flex items-center gap-2">
           <span className="text-2xl">🛒</span>
           <div className="leading-tight">
-            <div className="font-bold text-lg">Оптовик</div>
+            <div className="font-bold text-lg flex items-center">
+              Опт
+              <Image
+                src="/ruble.png"
+                alt="о"
+                width={500}
+                height={500}
+                style={{ filter: "contrast(1.15) saturate(1.05)" }}
+                className="inline-block rounded-full object-cover align-middle mx-[0.06em] h-[1.25em] w-[1.25em] ring-1 ring-neutral-300 shadow-sm"
+              />
+              вик
+            </div>
             <div className="text-xs text-neutral-500">Доставка продуктов · Махачкала</div>
           </div>
         </Link>

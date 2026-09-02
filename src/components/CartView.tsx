@@ -1,14 +1,17 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useCart } from "@/lib/cart";
 import { formatPrice } from "@/lib/products";
+import { CheckoutModal } from "./CheckoutModal";
 
 const FREE_DELIVERY_FROM = 2000; // бесплатная доставка от суммы, ₽
 const DELIVERY_FEE = 200; // стоимость доставки, ₽
 
 export function CartView() {
   const { lines, totalPrice, totalCount, add, remove, clear } = useCart();
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
 
   const deliveryFee =
     totalPrice >= FREE_DELIVERY_FROM || totalPrice === 0 ? 0 : DELIVERY_FEE;
@@ -101,10 +104,21 @@ export function CartView() {
           <span>Итого</span>
           <span className="tabular-nums text-emerald-600">{formatPrice(grandTotal)}</span>
         </div>
-        <button className="w-full rounded-xl bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white font-semibold py-3 transition-colors">
+        <button
+          onClick={() => setCheckoutOpen(true)}
+          className="w-full rounded-xl bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white font-semibold py-3 transition-colors"
+        >
           Оформить заказ
         </button>
       </div>
+
+      <CheckoutModal
+        open={checkoutOpen}
+        onClose={() => setCheckoutOpen(false)}
+        itemsTotal={totalPrice}
+        deliveryFee={deliveryFee}
+        total={grandTotal}
+      />
     </div>
   );
 }
