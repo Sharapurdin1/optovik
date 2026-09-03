@@ -1,10 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { categories, products, hitProducts } from "@/lib/products";
+import { useCatalog } from "@/lib/catalog-context";
 import { ProductCard } from "./ProductCard";
 
 export function Catalog({ initialCategory = null }: { initialCategory?: string | null }) {
+  const { products, categories, hitProducts } = useCatalog();
   const [activeCategory, setActiveCategory] = useState<string | null>(initialCategory);
   const [query, setQuery] = useState("");
 
@@ -15,7 +16,7 @@ export function Catalog({ initialCategory = null }: { initialCategory?: string |
       const matchesQuery = !q || p.title.toLowerCase().includes(q);
       return matchesCategory && matchesQuery;
     });
-  }, [activeCategory, query]);
+  }, [activeCategory, query, products]);
 
   // Блок «Хиты продаж» показываем только на общем экране,
   // когда не выбрана категория и пустой поиск.

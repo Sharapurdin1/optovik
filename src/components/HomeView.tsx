@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { categories, products, hitProducts } from "@/lib/products";
+import { getCatalog } from "@/lib/catalog";
 import { ProductCard } from "./ProductCard";
 
-const sales = products.filter((p) => p.oldPrice && p.oldPrice > p.price);
+export async function HomeView() {
+  const { products, categories, hitProducts } = await getCatalog();
+  const sales = products.filter((p) => p.oldPrice && p.oldPrice > p.price);
 
-export function HomeView() {
   return (
     <div className="mx-auto max-w-5xl px-4 py-4 space-y-8">
       {/* Баннер */}

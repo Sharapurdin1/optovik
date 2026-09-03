@@ -12,7 +12,8 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { products, type Product } from "./products";
+import { type Product } from "./products";
+import { useCatalog } from "./catalog-context";
 
 export type CartLine = {
   product: Product;
@@ -40,6 +41,7 @@ const STORAGE_KEY = "optovik-cart";
 type StoredCart = Record<string, number>;
 
 export function CartProvider({ children }: { children: ReactNode }) {
+  const { productById } = useCatalog();
   const [counts, setCounts] = useState<StoredCart>({});
   const [isOpen, setIsOpen] = useState(false);
 
@@ -66,7 +68,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     const lines: CartLine[] = Object.entries(counts)
       .filter(([, qty]) => qty > 0)
       .map(([id, qty]) => {
-        const product = products.find((p) => p.id === id);
+        const product = productById(id);
         return product ? { product, quantity: qty } : null;
       })
       .filter((l): l is CartLine => l !== null);
@@ -100,7 +102,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       quantityOf: (productId: string) => counts[productId] ?? 0,
       clear: () => setCounts({}),
     };
-  }, [counts, isOpen]);
+  }, [counts, isOpen, productById]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }
