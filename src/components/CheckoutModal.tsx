@@ -32,7 +32,7 @@ export function CheckoutModal({
   const { addOrder } = useOrders();
 
   const [name, setName] = useState("");
-  const [phone, setPhone] = useState(user ? formatPhone(user.phone) : "");
+  const [phone, setPhone] = useState(user ? formatPhone(user.phone) : "+7 ");
   const [address, setAddress] = useState("");
   const [payment, setPayment] = useState<PaymentMethod>("Наличными курьеру");
   const [comment, setComment] = useState("");
