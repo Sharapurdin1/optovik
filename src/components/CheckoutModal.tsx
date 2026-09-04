@@ -33,7 +33,12 @@ export function CheckoutModal({
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState(user ? formatPhone(user.phone) : "+7 ");
-  const [address, setAddress] = useState("");
+  // Адрес разбит на отдельные поля — так курьеру понятнее.
+  const [street, setStreet] = useState(""); // улица и номер дома
+  const [apartment, setApartment] = useState("");
+  const [entrance, setEntrance] = useState(""); // подъезд
+  const [floor, setFloor] = useState("");
+  const [intercom, setIntercom] = useState(""); // домофон
   const [payment, setPayment] = useState<PaymentMethod>("Наличными курьеру");
   const [comment, setComment] = useState("");
 
@@ -45,10 +50,21 @@ export function CheckoutModal({
   async function handleSubmit() {
     setError(null);
 
-    if (!name.trim() || !phone.trim() || !address.trim()) {
-      setError("Заполните имя, телефон и адрес");
+    if (!name.trim() || !phone.trim() || !street.trim()) {
+      setError("Заполните имя, телефон и адрес (улица и дом)");
       return;
     }
+
+    // Собираем отдельные поля адреса в одну строку для заказа и Telegram.
+    const address = [
+      street.trim(),
+      apartment.trim() && `кв. ${apartment.trim()}`,
+      entrance.trim() && `подъезд ${entrance.trim()}`,
+      floor.trim() && `этаж ${floor.trim()}`,
+      intercom.trim() && `домофон ${intercom.trim()}`,
+    ]
+      .filter(Boolean)
+      .join(", ");
 
     const order: Order = {
       id: String(Date.now()),
@@ -149,10 +165,36 @@ export function CheckoutModal({
               Адрес доставки
             </label>
             <input
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              placeholder="Улица, дом, квартира, этаж"
+              value={street}
+              onChange={(e) => setStreet(e.target.value)}
+              placeholder="Улица и дом, например: Гагарина, 15"
               className="w-full rounded-xl border border-neutral-300 px-4 py-2.5 outline-none focus:border-emerald-500 transition-colors"
+            />
+            <div className="grid grid-cols-3 gap-2 mt-2">
+              <input
+                value={apartment}
+                onChange={(e) => setApartment(e.target.value)}
+                placeholder="Кв./офис"
+                className="w-full rounded-xl border border-neutral-300 px-3 py-2.5 outline-none focus:border-emerald-500 transition-colors"
+              />
+              <input
+                value={entrance}
+                onChange={(e) => setEntrance(e.target.value)}
+                placeholder="Подъезд"
+                className="w-full rounded-xl border border-neutral-300 px-3 py-2.5 outline-none focus:border-emerald-500 transition-colors"
+              />
+              <input
+                value={floor}
+                onChange={(e) => setFloor(e.target.value)}
+                placeholder="Этаж"
+                className="w-full rounded-xl border border-neutral-300 px-3 py-2.5 outline-none focus:border-emerald-500 transition-colors"
+              />
+            </div>
+            <input
+              value={intercom}
+              onChange={(e) => setIntercom(e.target.value)}
+              placeholder="Домофон (если есть)"
+              className="w-full rounded-xl border border-neutral-300 px-4 py-2.5 mt-2 outline-none focus:border-emerald-500 transition-colors"
             />
           </div>
 
