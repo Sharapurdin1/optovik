@@ -135,7 +135,20 @@ function rowsToProducts(rows: string[][]): Product[] {
   const iEmoji = col(["эмодзи", "иконка", "значок", "emoji"]);
 
   // Без названия и цены таблицу читать нельзя.
-  if (iName < 0 || iPrice < 0) return [];
+  if (iName < 0 || iPrice < 0) {
+    const missing = [
+      iName < 0 ? "«Название»" : null,
+      iPrice < 0 ? "«Цена»" : null,
+    ]
+      .filter(Boolean)
+      .join(" и ");
+    console.warn(
+      `⚠️ Каталог: в таблице не найдены колонки ${missing}. ` +
+        `Проверьте первую строку с заголовками (Название, Категория, Цена, ...). ` +
+        `Пока показываю запасной список товаров.`
+    );
+    return [];
+  }
 
   const titleToCategory = new Map(
     MASTER_CATEGORIES.map((c) => [c.title.trim().toLowerCase(), c.id])
@@ -197,7 +210,13 @@ export async function getCatalog(): Promise<CatalogData> {
     const text = await res.text();
     const products = rowsToProducts(parseCSV(text));
     // Если таблица пустая или колонки не распознаны — не роняем магазин.
-    if (products.length === 0) return finalize(FALLBACK_PRODUCTS);
+    if (products.length === 0) {
+      console.warn(
+        "⚠️ Каталог: таблица прочитана, но подходящих товаров не найдено. " +
+          "Показываю запасной список товаров."
+      );
+      return finalize(FALLBACK_PRODUCTS);
+    }
     return finalize(products);
   } catch (e) {
     console.error("Не удалось загрузить каталог из таблицы:", e);
