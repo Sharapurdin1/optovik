@@ -9,8 +9,9 @@
 //   TELEGRAM_CHAT_ID   — id чата/группы, куда слать заказы
 //
 // ВАЖНО (на будущее): сейчас цены приходят из браузера и мы им доверяем.
-// Когда появится база данных, суммы нужно будет пересчитывать здесь,
-// на сервере, чтобы их нельзя было подделать.
+// Суммы стоит пересчитывать здесь, на сервере, чтобы их нельзя было подделать.
+
+import { db, schema } from "@/db";
 
 type OrderItem = {
   title: string;
@@ -20,6 +21,9 @@ type OrderItem = {
 };
 
 type OrderPayload = {
+  id?: string;
+  createdAt?: string;
+  status?: string;
   items: OrderItem[];
   itemsTotal: number;
   deliveryFee: number;
@@ -28,10 +32,43 @@ type OrderPayload = {
     name: string;
     phone: string;
     address: string;
+    street?: string;
     payment: string;
     comment: string;
   };
 };
+
+// Сохраняем заказ в базу данных. Ошибку не пробрасываем наружу:
+// заказ уже ушёл владельцу в Telegram, терять уведомление из-за базы нельзя.
+async function saveOrder(order: OrderPayload): Promise<void> {
+  const c = order.customer;
+  const id = order.id?.trim() || String(Date.now());
+  await db.insert(schema.orders).values({
+    id,
+    createdAt: order.createdAt?.trim() || new Date().toISOString(),
+    name: c.name.trim(),
+    phone: c.phone.trim(),
+    address: c.address.trim(),
+    street: c.street?.trim() || null,
+    payment: c.payment,
+    comment: c.comment?.trim() ?? "",
+    itemsTotal: order.itemsTotal,
+    deliveryFee: order.deliveryFee,
+    total: order.total,
+    status: order.status?.trim() || "Принят",
+  });
+  if (order.items.length > 0) {
+    await db.insert(schema.orderItems).values(
+      order.items.map((it) => ({
+        orderId: id,
+        title: it.title,
+        unit: it.unit,
+        price: it.price,
+        quantity: it.quantity,
+      }))
+    );
+  }
+}
 
 function escapeHtml(text: string): string {
   return text
@@ -139,6 +176,13 @@ export async function POST(req: Request) {
         { ok: false, error: "Не удалось отправить заказ. Попробуйте ещё раз" },
         { status: 502 }
       );
+    }
+
+    // Заказ доставлен владельцу — сохраняем его в базу для истории и маршрутов.
+    try {
+      await saveOrder(order);
+    } catch (e) {
+      console.error("⚠️ Заказ ушёл в Telegram, но не сохранился в базу:", e);
     }
 
     return Response.json({ ok: true });

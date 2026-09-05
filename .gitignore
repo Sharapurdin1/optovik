@@ -41,3 +41,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# база данных (файлы SQLite с данными заказов — не в git)
+/data
+*.db
+*.db-journal
+*.db-wal
+*.db-shm

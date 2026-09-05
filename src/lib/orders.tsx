@@ -24,7 +24,8 @@ export type OrderItem = {
 export type OrderCustomer = {
   name: string;
   phone: string;
-  address: string;
+  address: string; // полный адрес одной строкой
+  street?: string; // «улица и дом» отдельно — для построения маршрута
   payment: string; // «Наличными курьеру» / «Картой курьеру»
   comment: string;
 };

@@ -82,6 +82,7 @@ export function CheckoutModal({
         name: name.trim(),
         phone: phone.trim(),
         address: address.trim(),
+        street: street.trim(),
         payment,
         comment: comment.trim(),
       },
