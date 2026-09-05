@@ -7,7 +7,8 @@ export function AuthModal() {
   const { isModalOpen, closeLogin, requestCode, verifyCode } = useAuth();
 
   const [step, setStep] = useState<"phone" | "code">("phone");
-  const [phoneInput, setPhoneInput] = useState("");
+  // Сразу подставляем +7, чтобы клиенту оставалось ввести только номер.
+  const [phoneInput, setPhoneInput] = useState("+7 ");
   const [normalized, setNormalized] = useState<string | null>(null);
   const [codeInput, setCodeInput] = useState("");
   const [demoCode, setDemoCode] = useState<string | null>(null);
@@ -17,7 +18,7 @@ export function AuthModal() {
 
   function reset() {
     setStep("phone");
-    setPhoneInput("");
+    setPhoneInput("+7 ");
     setNormalized(null);
     setCodeInput("");
     setDemoCode(null);
