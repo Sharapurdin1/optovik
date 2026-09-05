@@ -3,8 +3,10 @@
 // Список заказов покупателя. Данные берём из localStorage (useOrders).
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { useOrders } from "@/lib/orders";
 import { formatPrice } from "@/lib/products";
+import { STATUS_STYLE } from "@/lib/order-status";
 
 function formatDate(iso: string): string {
   const d = new Date(iso);
@@ -18,6 +20,26 @@ function formatDate(iso: string): string {
 
 export function OrdersView() {
   const { orders } = useOrders();
+
+  // Подтягиваем актуальные статусы из базы (владелец мог их поменять).
+  const [liveStatus, setLiveStatus] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (orders.length === 0) return;
+    const ids = orders.map((o) => o.id).join(",");
+    let cancelled = false;
+    fetch(`/api/order/status?ids=${encodeURIComponent(ids)}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (!cancelled && data?.statuses) setLiveStatus(data.statuses);
+      })
+      .catch(() => {
+        // нет связи — покажем сохранённый статус, ничего страшного
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [orders]);
 
   if (orders.length === 0) {
     return (
@@ -52,9 +74,18 @@ export function OrdersView() {
               <span className="text-sm text-neutral-500">
                 {formatDate(order.createdAt)}
               </span>
-              <span className="text-xs font-medium rounded-full bg-emerald-50 text-emerald-700 px-2.5 py-1">
-                {order.status}
-              </span>
+              {(() => {
+                const status = liveStatus[order.id] ?? order.status;
+                return (
+                  <span
+                    className={`text-xs font-medium rounded-full px-2.5 py-1 ${
+                      STATUS_STYLE[status] ?? "bg-emerald-50 text-emerald-700"
+                    }`}
+                  >
+                    {status}
+                  </span>
+                );
+              })()}
             </div>
 
             <div className="space-y-1 mb-3">

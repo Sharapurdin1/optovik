@@ -5,7 +5,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatPrice } from "@/lib/products";
-import { ORDER_STATUSES, type OrderStatus } from "@/lib/order-status";
+import {
+  ORDER_STATUSES,
+  STATUS_STYLE,
+  type OrderStatus,
+} from "@/lib/order-status";
 import type { AdminOrder } from "@/lib/orders-server";
 
 function formatDate(iso: string): string {
@@ -17,14 +21,6 @@ function formatDate(iso: string): string {
     minute: "2-digit",
   });
 }
-
-// Цвет плашки статуса.
-const STATUS_STYLE: Record<string, string> = {
-  Принят: "bg-neutral-100 text-neutral-700",
-  Собираем: "bg-amber-50 text-amber-700",
-  "В пути": "bg-blue-50 text-blue-700",
-  Доставлен: "bg-emerald-50 text-emerald-700",
-};
 
 export function ManageOrders({ initialOrders }: { initialOrders: AdminOrder[] }) {
   const router = useRouter();

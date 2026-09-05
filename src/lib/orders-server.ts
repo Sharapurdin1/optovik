@@ -38,6 +38,21 @@ export async function getAllOrders(): Promise<AdminOrder[]> {
   return orders.map((o) => ({ ...o, items: byOrder.get(o.id) ?? [] }));
 }
 
+// Актуальные статусы для набора заказов (по их id).
+// Нужно клиенту для «живого» статуса в разделе «Мои заказы».
+export async function getOrderStatuses(
+  ids: string[]
+): Promise<Record<string, string>> {
+  if (ids.length === 0) return {};
+  const rows = await db
+    .select({ id: schema.orders.id, status: schema.orders.status })
+    .from(schema.orders)
+    .where(inArray(schema.orders.id, ids));
+  const out: Record<string, string> = {};
+  for (const r of rows) out[r.id] = r.status;
+  return out;
+}
+
 // Сменить статус заказа.
 export async function updateOrderStatus(
   id: string,
