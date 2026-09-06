@@ -27,6 +27,21 @@ export const orders = sqliteTable("orders", {
   status: text("status").notNull().default("Принят"), // Принят / Собираем / В пути / Доставлен
 });
 
+// Аккаунт клиента (регистрируется при первом входе по телефону).
+export const customers = sqliteTable("customers", {
+  phone: text("phone").primaryKey(), // +7XXXXXXXXXX
+  name: text("name"),
+  createdAt: text("created_at").notNull(),
+});
+
+// Одноразовый код подтверждения для входа (один активный на телефон).
+export const authCodes = sqliteTable("auth_codes", {
+  phone: text("phone").primaryKey(),
+  code: text("code").notNull(),
+  expiresAt: integer("expires_at").notNull(), // время истечения, unix-мс
+  attempts: integer("attempts").notNull().default(0),
+});
+
 // Одна позиция внутри заказа.
 export const orderItems = sqliteTable("order_items", {
   id: integer("id").primaryKey({ autoIncrement: true }),

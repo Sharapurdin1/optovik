@@ -2,12 +2,9 @@
 
 // Авторизация по номеру телефона.
 //
-// ВАЖНО (демо-режим): код подтверждения сейчас генерируется прямо в браузере
-// и показывается на экране — настоящая SMS НЕ отправляется.
-// Для реального запуска нужно:
-//   1) подключить SMS-сервис (SMSC.ru, SMS Aero и т.п.);
-//   2) генерировать и проверять код на сервере, а не в браузере.
-// Тогда меняется только реализация requestCode/verifyCode — экраны останутся.
+// Код генерируется и проверяется НА СЕРВЕРЕ (см. /api/auth/*), а аккаунт
+// хранится в базе. Отправка кода в СМС — через SMS Aero; пока СМС-сервис
+// не настроен, сервер возвращает код для показа на экране (демо-режим).
 
 import {
   createContext,
@@ -18,9 +15,21 @@ import {
   type ReactNode,
 } from "react";
 
+// Функции телефона живут в нейтральном модуле; ре-экспортим для совместимости.
+export { normalizePhone, formatPhone } from "./phone";
+
 export type User = {
   phone: string; // в формате +7XXXXXXXXXX
+  name?: string | null;
 };
+
+export type RequestCodeResult = {
+  ok: boolean;
+  demoCode?: string;
+  phone?: string; // нормализованный номер — им подтверждаем код
+  error?: string;
+};
+export type VerifyResult = { ok: boolean; error?: string };
 
 type AuthContextValue = {
   user: User | null;
@@ -28,10 +37,10 @@ type AuthContextValue = {
   openLogin: () => void;
   closeLogin: () => void;
   logout: () => void;
-  /** «Отправляет» код на телефон. В демо возвращает код для показа на экране. */
-  requestCode: (phone: string) => string;
-  /** Проверяет введённый код. Возвращает true при успехе и выполняет вход. */
-  verifyCode: (phone: string, code: string) => boolean;
+  /** Просит сервер отправить код на телефон. */
+  requestCode: (phone: string) => Promise<RequestCodeResult>;
+  /** Проверяет код на сервере; при успехе выполняет вход. */
+  verifyCode: (phone: string, code: string) => Promise<VerifyResult>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -41,8 +50,6 @@ const STORAGE_KEY = "optovik-user";
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  // Код, который мы «отправили» (демо). В реальности хранится на сервере.
-  const [sentCode, setSentCode] = useState<string | null>(null);
 
   // Восстанавливаем вход при заходе.
   useEffect(() => {
@@ -62,30 +69,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       closeLogin: () => setIsModalOpen(false),
       logout: () => {
         setUser(null);
-        setSentCode(null);
         try {
           localStorage.removeItem(STORAGE_KEY);
         } catch {}
       },
-      requestCode: (phone: string) => {
-        // Демо: случайный 4-значный код.
-        const code = String(Math.floor(1000 + Math.random() * 9000));
-        setSentCode(code);
-        return code;
-      },
-      verifyCode: (phone: string, code: string) => {
-        if (!sentCode || code !== sentCode) return false;
-        const nextUser: User = { phone };
-        setUser(nextUser);
-        setSentCode(null);
-        setIsModalOpen(false);
+      requestCode: async (phone: string): Promise<RequestCodeResult> => {
         try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(nextUser));
-        } catch {}
-        return true;
+          const res = await fetch("/api/auth/request-code", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ phone }),
+          });
+          return (await res.json()) as RequestCodeResult;
+        } catch {
+          return { ok: false, error: "Нет связи с сервером" };
+        }
+      },
+      verifyCode: async (phone: string, code: string): Promise<VerifyResult> => {
+        try {
+          const res = await fetch("/api/auth/verify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ phone, code }),
+          });
+          const data = (await res.json()) as VerifyResult & {
+            name?: string | null;
+          };
+          if (data.ok) {
+            const nextUser: User = { phone, name: data.name ?? null };
+            setUser(nextUser);
+            setIsModalOpen(false);
+            try {
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(nextUser));
+            } catch {}
+          }
+          return data;
+        } catch {
+          return { ok: false, error: "Нет связи с сервером" };
+        }
       },
     }),
-    [user, isModalOpen, sentCode]
+    [user, isModalOpen]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -95,24 +119,4 @@ export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error("useAuth должен вызываться внутри <AuthProvider>");
   return ctx;
-}
-
-/** Приводит ввод к виду +7XXXXXXXXXX (11 цифр). Возвращает null, если номер неполный. */
-export function normalizePhone(input: string): string | null {
-  let digits = input.replace(/\D/g, "");
-  if (digits.length === 11 && (digits[0] === "8" || digits[0] === "7")) {
-    digits = "7" + digits.slice(1);
-  } else if (digits.length === 10) {
-    digits = "7" + digits;
-  } else {
-    return null;
-  }
-  return "+" + digits;
-}
-
-/** Красивый показ номера: +7 (999) 123-45-67 */
-export function formatPhone(phone: string): string {
-  const d = phone.replace(/\D/g, "");
-  if (d.length !== 11) return phone;
-  return `+7 (${d.slice(1, 4)}) ${d.slice(4, 7)}-${d.slice(7, 9)}-${d.slice(9, 11)}`;
 }

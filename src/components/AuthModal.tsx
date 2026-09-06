@@ -13,6 +13,7 @@ export function AuthModal() {
   const [codeInput, setCodeInput] = useState("");
   const [demoCode, setDemoCode] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   if (!isModalOpen) return null;
 
@@ -23,6 +24,7 @@ export function AuthModal() {
     setCodeInput("");
     setDemoCode(null);
     setError(null);
+    setBusy(false);
   }
 
   function handleClose() {
@@ -30,24 +32,33 @@ export function AuthModal() {
     closeLogin();
   }
 
-  function handleSendCode() {
-    const phone = normalizePhone(phoneInput);
-    if (!phone) {
+  async function handleSendCode() {
+    if (busy) return;
+    if (!normalizePhone(phoneInput)) {
       setError("Введите корректный номер телефона");
       return;
     }
-    setNormalized(phone);
-    const code = requestCode(phone);
-    setDemoCode(code); // демо: показываем код на экране
-    setStep("code");
+    setBusy(true);
     setError(null);
+    const res = await requestCode(phoneInput);
+    setBusy(false);
+    if (!res.ok || !res.phone) {
+      setError(res.error ?? "Не удалось отправить код");
+      return;
+    }
+    setNormalized(res.phone);
+    setDemoCode(res.demoCode ?? null); // код на экране только в демо-режиме
+    setStep("code");
   }
 
-  function handleVerify() {
-    if (!normalized) return;
-    const ok = verifyCode(normalized, codeInput.trim());
-    if (!ok) {
-      setError("Неверный код. Попробуйте ещё раз");
+  async function handleVerify() {
+    if (busy || !normalized) return;
+    setBusy(true);
+    setError(null);
+    const res = await verifyCode(normalized, codeInput.trim());
+    setBusy(false);
+    if (!res.ok) {
+      setError(res.error ?? "Неверный код. Попробуйте ещё раз");
       return;
     }
     reset();
@@ -87,9 +98,10 @@ export function AuthModal() {
             {error && <p className="text-sm text-red-500 mt-2">{error}</p>}
             <button
               onClick={handleSendCode}
-              className="w-full mt-4 rounded-xl bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white font-semibold py-3 transition-colors"
+              disabled={busy}
+              className="w-full mt-4 rounded-xl bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white font-semibold py-3 transition-colors disabled:opacity-60"
             >
-              Получить код
+              {busy ? "Отправляем…" : "Получить код"}
             </button>
           </>
         ) : (
@@ -121,9 +133,10 @@ export function AuthModal() {
             {error && <p className="text-sm text-red-500 mt-2">{error}</p>}
             <button
               onClick={handleVerify}
-              className="w-full mt-4 rounded-xl bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white font-semibold py-3 transition-colors"
+              disabled={busy}
+              className="w-full mt-4 rounded-xl bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white font-semibold py-3 transition-colors disabled:opacity-60"
             >
-              Войти
+              {busy ? "Проверяем…" : "Войти"}
             </button>
             <button
               onClick={() => {
