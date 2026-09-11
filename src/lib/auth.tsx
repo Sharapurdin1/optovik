@@ -29,7 +29,12 @@ export type RequestCodeResult = {
   phone?: string; // нормализованный номер — им подтверждаем код
   error?: string;
 };
-export type VerifyResult = { ok: boolean; error?: string };
+export type VerifyResult = {
+  ok: boolean;
+  error?: string;
+  name?: string | null;
+  needName?: boolean;
+};
 
 type AuthContextValue = {
   user: User | null;
@@ -39,8 +44,10 @@ type AuthContextValue = {
   logout: () => void;
   /** Просит сервер отправить код на телефон. */
   requestCode: (phone: string) => Promise<RequestCodeResult>;
-  /** Проверяет код на сервере; при успехе выполняет вход. */
+  /** Проверяет код на сервере; при успехе выполняет вход (окно НЕ закрывает). */
   verifyCode: (phone: string, code: string) => Promise<VerifyResult>;
+  /** Сохраняет имя клиента (шаг регистрации). */
+  saveName: (name: string) => Promise<{ ok: boolean; error?: string }>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -92,13 +99,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ phone, code }),
           });
-          const data = (await res.json()) as VerifyResult & {
-            name?: string | null;
-          };
+          const data = (await res.json()) as VerifyResult;
           if (data.ok) {
+            // Вход выполнен; окно закроет уже сам экран (может быть шаг «имя»).
             const nextUser: User = { phone, name: data.name ?? null };
             setUser(nextUser);
-            setIsModalOpen(false);
+            try {
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(nextUser));
+            } catch {}
+          }
+          return data;
+        } catch {
+          return { ok: false, error: "Нет связи с сервером" };
+        }
+      },
+      saveName: async (name: string) => {
+        const phone = user?.phone;
+        if (!phone) return { ok: false, error: "Сначала войдите" };
+        try {
+          const res = await fetch("/api/auth/name", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ phone, name }),
+          });
+          const data = (await res.json()) as { ok: boolean; error?: string };
+          if (data.ok) {
+            const nextUser: User = { phone, name };
+            setUser(nextUser);
             try {
               localStorage.setItem(STORAGE_KEY, JSON.stringify(nextUser));
             } catch {}

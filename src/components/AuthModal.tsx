@@ -4,9 +4,11 @@ import { useState } from "react";
 import { useAuth, normalizePhone, formatPhone } from "@/lib/auth";
 
 export function AuthModal() {
-  const { isModalOpen, closeLogin, requestCode, verifyCode } = useAuth();
+  const { isModalOpen, closeLogin, requestCode, verifyCode, saveName } =
+    useAuth();
 
-  const [step, setStep] = useState<"phone" | "code">("phone");
+  const [step, setStep] = useState<"phone" | "code" | "name">("phone");
+  const [nameInput, setNameInput] = useState("");
   // Сразу подставляем +7, чтобы клиенту оставалось ввести только номер.
   const [phoneInput, setPhoneInput] = useState("+7 ");
   const [normalized, setNormalized] = useState<string | null>(null);
@@ -22,6 +24,7 @@ export function AuthModal() {
     setPhoneInput("+7 ");
     setNormalized(null);
     setCodeInput("");
+    setNameInput("");
     setDemoCode(null);
     setError(null);
     setBusy(false);
@@ -61,7 +64,36 @@ export function AuthModal() {
       setError(res.error ?? "Неверный код. Попробуйте ещё раз");
       return;
     }
+    // Новый клиент — просим имя; иначе просто входим.
+    if (res.needName) {
+      setStep("name");
+      return;
+    }
     reset();
+    closeLogin();
+  }
+
+  async function handleSaveName() {
+    if (busy) return;
+    if (!nameInput.trim()) {
+      setError("Введите имя");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    const res = await saveName(nameInput.trim());
+    setBusy(false);
+    if (!res.ok) {
+      setError(res.error ?? "Не удалось сохранить имя");
+      return;
+    }
+    reset();
+    closeLogin();
+  }
+
+  function skipName() {
+    reset();
+    closeLogin();
   }
 
   return (
@@ -81,7 +113,7 @@ export function AuthModal() {
 
         {step === "phone" ? (
           <>
-            <h2 className="text-xl font-bold mb-1">Вход по телефону</h2>
+            <h2 className="text-xl font-bold mb-1">Вход или регистрация</h2>
             <p className="text-sm text-neutral-500 mb-4">
               Введите номер — пришлём код подтверждения
             </p>
@@ -104,7 +136,7 @@ export function AuthModal() {
               {busy ? "Отправляем…" : "Получить код"}
             </button>
           </>
-        ) : (
+        ) : step === "code" ? (
           <>
             <h2 className="text-xl font-bold mb-1">Введите код</h2>
             <p className="text-sm text-neutral-500 mb-4">
@@ -147,6 +179,37 @@ export function AuthModal() {
               className="w-full mt-2 text-sm text-neutral-500 hover:text-neutral-800"
             >
               Изменить номер
+            </button>
+          </>
+        ) : (
+          <>
+            <h2 className="text-xl font-bold mb-1">Как вас зовут?</h2>
+            <p className="text-sm text-neutral-500 mb-4">
+              Имя нужно, чтобы курьер знал, к кому едет
+            </p>
+            <input
+              type="text"
+              value={nameInput}
+              onChange={(e) => setNameInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSaveName()}
+              placeholder="Например: Магомед"
+              className="w-full rounded-xl border border-neutral-300 px-4 py-3 outline-none focus:border-emerald-500 transition-colors"
+              autoFocus
+            />
+            {error && <p className="text-sm text-red-500 mt-2">{error}</p>}
+            <button
+              onClick={handleSaveName}
+              disabled={busy}
+              className="w-full mt-4 rounded-xl bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white font-semibold py-3 transition-colors disabled:opacity-60"
+            >
+              {busy ? "Сохраняем…" : "Готово"}
+            </button>
+            <button
+              onClick={skipName}
+              disabled={busy}
+              className="w-full mt-2 text-sm text-neutral-500 hover:text-neutral-800 disabled:opacity-60"
+            >
+              Пропустить
             </button>
           </>
         )}

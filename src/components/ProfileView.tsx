@@ -24,8 +24,12 @@ export function ProfileView() {
         </div>
         {user ? (
           <div className="flex-1">
-            <div className="font-semibold">{formatPhone(user.phone)}</div>
-            <div className="text-sm text-neutral-500">Вы вошли в аккаунт</div>
+            <div className="font-semibold">
+              {user.name?.trim() || formatPhone(user.phone)}
+            </div>
+            <div className="text-sm text-neutral-500">
+              {user.name?.trim() ? formatPhone(user.phone) : "Вы вошли в аккаунт"}
+            </div>
           </div>
         ) : (
           <div className="flex-1">
@@ -34,7 +38,7 @@ export function ProfileView() {
               onClick={openLogin}
               className="text-sm text-emerald-600 font-medium hover:underline"
             >
-              Войти по телефону
+              Войти или зарегистрироваться
             </button>
           </div>
         )}

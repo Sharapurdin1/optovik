@@ -45,6 +45,7 @@ export type VerifyResult = {
   ok: boolean;
   error?: string;
   name?: string | null;
+  needName?: boolean; // true, если у аккаунта ещё нет имени (просим ввести)
 };
 
 export async function verifyLoginCode(
@@ -90,5 +91,17 @@ export async function verifyLoginCode(
     });
   }
 
-  return { ok: true, name: existing[0]?.name ?? null };
+  const name = existing[0]?.name ?? null;
+  return { ok: true, name, needName: !name };
+}
+
+// Сохранить имя клиента (после регистрации).
+export async function setCustomerName(
+  phone: string,
+  name: string
+): Promise<void> {
+  await db
+    .update(schema.customers)
+    .set({ name })
+    .where(eq(schema.customers.phone, phone));
 }
