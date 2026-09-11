@@ -1,7 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useAuth, normalizePhone, formatPhone } from "@/lib/auth";
+import {
+  useAuth,
+  normalizePhone,
+  formatPhone,
+  formatPhoneInput,
+} from "@/lib/auth";
 
 export function AuthModal() {
   const { isModalOpen, closeLogin, requestCode, verifyCode, saveName } =
@@ -121,7 +126,7 @@ export function AuthModal() {
               type="tel"
               inputMode="tel"
               value={phoneInput}
-              onChange={(e) => setPhoneInput(e.target.value)}
+              onChange={(e) => setPhoneInput(formatPhoneInput(e.target.value))}
               onKeyDown={(e) => e.key === "Enter" && handleSendCode()}
               placeholder="+7 (999) 123-45-67"
               className="w-full rounded-xl border border-neutral-300 px-4 py-3 outline-none focus:border-emerald-500 transition-colors"

@@ -13,6 +13,25 @@ export function normalizePhone(input: string): string | null {
   return "+" + digits;
 }
 
+/**
+ * Живая «маска» для поля ввода: из любого ввода собирает номер в виде
+ * +7 (900) 123-45-67, подставляя разделители по мере набора цифр.
+ */
+export function formatPhoneInput(raw: string): string {
+  let d = raw.replace(/\D/g, "");
+  if (d.startsWith("8")) d = "7" + d.slice(1); // 8… → 7…
+  if (!d.startsWith("7")) d = "7" + d; // всегда начинаем с 7
+  const rest = d.slice(1, 11); // до 10 цифр номера
+
+  let out = "+7";
+  if (rest.length > 0) out += " (" + rest.slice(0, 3);
+  if (rest.length >= 3) out += ")";
+  if (rest.length > 3) out += " " + rest.slice(3, 6);
+  if (rest.length > 6) out += "-" + rest.slice(6, 8);
+  if (rest.length > 8) out += "-" + rest.slice(8, 10);
+  return out;
+}
+
 /** Красивый показ номера: +7 (999) 123-45-67 */
 export function formatPhone(phone: string): string {
   const d = phone.replace(/\D/g, "");

@@ -16,7 +16,7 @@ import {
 } from "react";
 
 // Функции телефона живут в нейтральном модуле; ре-экспортим для совместимости.
-export { normalizePhone, formatPhone } from "./phone";
+export { normalizePhone, formatPhone, formatPhoneInput } from "./phone";
 
 export type User = {
   phone: string; // в формате +7XXXXXXXXXX
