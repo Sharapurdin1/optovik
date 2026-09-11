@@ -36,7 +36,9 @@ export function Header() {
             className="flex items-center gap-1.5 rounded-xl border border-neutral-300 hover:bg-neutral-100 px-3 py-2 font-medium transition-colors"
           >
             <span>👤</span>
-            <span className="hidden sm:inline text-sm">{formatPhone(user.phone)}</span>
+            <span className="hidden sm:inline text-sm">
+              {user.name?.trim() || formatPhone(user.phone)}
+            </span>
           </button>
         ) : (
           <button
