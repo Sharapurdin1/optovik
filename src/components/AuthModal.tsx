@@ -1,12 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import {
-  useAuth,
-  normalizePhone,
-  formatPhone,
-  formatPhoneInput,
-} from "@/lib/auth";
+import { useAuth, formatPhone, formatPhoneInput } from "@/lib/auth";
 
 export function AuthModal() {
   const { isModalOpen, closeLogin, requestCode, verifyCode, saveName } =
@@ -42,8 +37,10 @@ export function AuthModal() {
 
   async function handleSendCode() {
     if (busy) return;
-    if (!normalizePhone(phoneInput)) {
-      setError("Введите корректный номер телефона");
+    // Требуем полностью заполненный номер: +7 и все 10 цифр (итого 11).
+    const digits = phoneInput.replace(/\D/g, "");
+    if (digits.length !== 11) {
+      setError("Введите номер полностью — все 10 цифр после +7");
       return;
     }
     setBusy(true);
