@@ -21,6 +21,7 @@ export { normalizePhone, formatPhone, formatPhoneInput } from "./phone";
 export type User = {
   phone: string; // в формате +7XXXXXXXXXX
   name?: string | null;
+  isOwner?: boolean; // владелец магазина — есть доступ к панели /manage
 };
 
 export type RequestCodeResult = {
@@ -34,6 +35,7 @@ export type VerifyResult = {
   error?: string;
   name?: string | null;
   needName?: boolean;
+  isOwner?: boolean;
 };
 
 type AuthContextValue = {
@@ -79,6 +81,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           localStorage.removeItem(STORAGE_KEY);
         } catch {}
+        // На всякий случай закрываем и сессию панели владельца.
+        fetch("/api/admin/logout", { method: "POST" }).catch(() => {});
       },
       requestCode: async (phone: string): Promise<RequestCodeResult> => {
         try {
@@ -102,7 +106,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const data = (await res.json()) as VerifyResult;
           if (data.ok) {
             // Вход выполнен; окно закроет уже сам экран (может быть шаг «имя»).
-            const nextUser: User = { phone, name: data.name ?? null };
+            const nextUser: User = {
+              phone,
+              name: data.name ?? null,
+              isOwner: data.isOwner ?? false,
+            };
             setUser(nextUser);
             try {
               localStorage.setItem(STORAGE_KEY, JSON.stringify(nextUser));
@@ -124,7 +132,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           });
           const data = (await res.json()) as { ok: boolean; error?: string };
           if (data.ok) {
-            const nextUser: User = { phone, name };
+            const nextUser: User = { phone, name, isOwner: user?.isOwner };
             setUser(nextUser);
             try {
               localStorage.setItem(STORAGE_KEY, JSON.stringify(nextUser));

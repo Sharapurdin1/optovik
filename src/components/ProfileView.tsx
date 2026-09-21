@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useAuth, formatPhone } from "@/lib/auth";
 
 const menu = [
@@ -43,6 +44,18 @@ export function ProfileView() {
           </div>
         )}
       </div>
+
+      {/* Панель владельца — видна только владельцу */}
+      {user?.isOwner && (
+        <Link
+          href="/manage"
+          className="flex items-center gap-3 rounded-2xl bg-emerald-500 text-white p-4 mb-4 font-semibold hover:bg-emerald-600 transition-colors"
+        >
+          <span className="text-xl">🚚</span>
+          <span className="flex-1">Панель заказов</span>
+          <span>›</span>
+        </Link>
+      )}
 
       {/* Меню разделов */}
       <div className="bg-white rounded-2xl border border-neutral-200 divide-y divide-neutral-100 overflow-hidden">

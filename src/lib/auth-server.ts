@@ -41,11 +41,23 @@ export async function requestLoginCode(
   return { ok: false, error: sms.error ?? "Не удалось отправить код" };
 }
 
+// Является ли номер «владельцем» (список в env OWNER_PHONES, через запятую).
+export function isOwnerPhone(phone: string): boolean {
+  const raw = process.env.OWNER_PHONES;
+  if (!raw) return false;
+  const owners = raw
+    .split(",")
+    .map((s) => s.replace(/\D/g, ""))
+    .filter(Boolean);
+  return owners.includes(phone.replace(/\D/g, ""));
+}
+
 export type VerifyResult = {
   ok: boolean;
   error?: string;
   name?: string | null;
   needName?: boolean; // true, если у аккаунта ещё нет имени (просим ввести)
+  isOwner?: boolean; // true, если вошёл владелец (доступ к панели /manage)
 };
 
 export async function verifyLoginCode(
@@ -92,7 +104,7 @@ export async function verifyLoginCode(
   }
 
   const name = existing[0]?.name ?? null;
-  return { ok: true, name, needName: !name };
+  return { ok: true, name, needName: !name, isOwner: isOwnerPhone(phone) };
 }
 
 // Сохранить имя клиента (после регистрации).
