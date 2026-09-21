@@ -4,17 +4,14 @@ import { useState } from "react";
 import Link from "next/link";
 import { useCart } from "@/lib/cart";
 import { formatPrice } from "@/lib/products";
+import { FREE_DELIVERY_FROM, calcDeliveryFee } from "@/lib/delivery";
 import { CheckoutModal } from "./CheckoutModal";
-
-const FREE_DELIVERY_FROM = 2000; // бесплатная доставка от суммы, ₽
-const DELIVERY_FEE = 200; // стоимость доставки, ₽
 
 export function CartView() {
   const { lines, totalPrice, totalCount, add, remove, clear } = useCart();
   const [checkoutOpen, setCheckoutOpen] = useState(false);
 
-  const deliveryFee =
-    totalPrice >= FREE_DELIVERY_FROM || totalPrice === 0 ? 0 : DELIVERY_FEE;
+  const deliveryFee = calcDeliveryFee(totalPrice);
   const grandTotal = totalPrice + deliveryFee;
   const untilFree = Math.max(0, FREE_DELIVERY_FROM - totalPrice);
 

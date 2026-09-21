@@ -15,6 +15,7 @@ import {
 } from "react";
 
 export type OrderItem = {
+  productId?: string; // id товара из каталога — для пересчёта цены на сервере
   title: string;
   unit: string;
   price: number;

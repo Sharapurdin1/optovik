@@ -8,12 +8,16 @@
 //   TELEGRAM_BOT_TOKEN — токен бота от @BotFather
 //   TELEGRAM_CHAT_ID   — id чата/группы, куда слать заказы
 //
-// ВАЖНО (на будущее): сейчас цены приходят из браузера и мы им доверяем.
-// Суммы стоит пересчитывать здесь, на сервере, чтобы их нельзя было подделать.
+// БЕЗОПАСНОСТЬ: цены и суммы из браузера НЕ используются. Сервер сам берёт
+// актуальные цены из каталога (getCatalog) по id товара и пересчитывает
+// итог и доставку — подделать сумму из браузера нельзя.
 
 import { db, schema } from "@/db";
+import { getCatalog } from "@/lib/catalog";
+import { calcDeliveryFee } from "@/lib/delivery";
 
 type OrderItem = {
+  productId?: string;
   title: string;
   unit: string;
   price: number;
@@ -116,6 +120,38 @@ function buildMessage(order: OrderPayload): string {
     .join("\n");
 }
 
+// Пересчёт заказа по каталогу: берём НАСТОЯЩИЕ цены из каталога по id товара
+// и считаем суммы заново. Цены/итоги из браузера полностью игнорируются.
+async function recomputeOrder(order: OrderPayload): Promise<OrderPayload | null> {
+  const { products } = await getCatalog();
+  const byId = new Map(products.map((p) => [p.id, p]));
+
+  const items: OrderItem[] = [];
+  for (const it of order.items) {
+    const prod = it.productId ? byId.get(it.productId) : undefined;
+    if (!prod) continue; // товара нет в каталоге — не берём
+    const qty = Math.max(1, Math.min(99, Math.floor(Number(it.quantity) || 0)));
+    items.push({
+      productId: prod.id,
+      title: prod.title,
+      unit: prod.unit,
+      price: prod.price, // цена из каталога, а не из браузера
+      quantity: qty,
+    });
+  }
+  if (items.length === 0) return null;
+
+  const itemsTotal = items.reduce((s, i) => s + i.price * i.quantity, 0);
+  const deliveryFee = calcDeliveryFee(itemsTotal);
+  return {
+    ...order,
+    items,
+    itemsTotal,
+    deliveryFee,
+    total: itemsTotal + deliveryFee,
+  };
+}
+
 // Простая проверка, что заказ вообще пригоден к отправке.
 function isValid(order: OrderPayload): boolean {
   if (!order || !Array.isArray(order.items) || order.items.length === 0)
@@ -155,6 +191,15 @@ export async function POST(req: Request) {
     );
   }
 
+  // Пересчитываем цены и суммы на сервере — источник истины, не браузер.
+  const trusted = await recomputeOrder(order);
+  if (!trusted) {
+    return Response.json(
+      { ok: false, error: "Корзина пуста или товары недоступны" },
+      { status: 400 }
+    );
+  }
+
   try {
     const tgRes = await fetch(
       `https://api.telegram.org/bot${token}/sendMessage`,
@@ -163,7 +208,7 @@ export async function POST(req: Request) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           chat_id: chatId,
-          text: buildMessage(order),
+          text: buildMessage(trusted),
           parse_mode: "HTML",
         }),
       }
@@ -180,7 +225,7 @@ export async function POST(req: Request) {
 
     // Заказ доставлен владельцу — сохраняем его в базу для истории и маршрутов.
     try {
-      await saveOrder(order);
+      await saveOrder(trusted);
     } catch (e) {
       console.error("⚠️ Заказ ушёл в Telegram, но не сохранился в базу:", e);
     }

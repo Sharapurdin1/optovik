@@ -70,6 +70,7 @@ export function CheckoutModal({
       id: String(Date.now()),
       createdAt: new Date().toISOString(),
       items: lines.map((l) => ({
+        productId: l.product.id,
         title: l.product.title,
         unit: l.product.unit,
         price: l.product.price,
