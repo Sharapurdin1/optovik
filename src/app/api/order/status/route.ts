@@ -6,6 +6,7 @@ import {
   isOrderStatus,
   updateOrderStatus,
 } from "@/lib/orders-server";
+import { isAdmin } from "@/lib/admin-auth";
 
 // GET /api/order/status?ids=a,b,c — актуальные статусы заказов (для клиента).
 export async function GET(req: Request) {
@@ -23,6 +24,11 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  // Менять статус может только владелец (с админ-сессией).
+  if (!(await isAdmin())) {
+    return Response.json({ ok: false, error: "Нет доступа" }, { status: 401 });
+  }
+
   let body: { id?: string; status?: string };
   try {
     body = await req.json();

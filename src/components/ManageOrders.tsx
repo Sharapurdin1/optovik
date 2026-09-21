@@ -51,12 +51,23 @@ export function ManageOrders({ initialOrders }: { initialOrders: AdminOrder[] })
     <div className="mx-auto max-w-3xl px-4 py-4">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold">Заказы</h1>
-        <button
-          onClick={() => router.refresh()}
-          className="text-sm rounded-xl border border-neutral-300 px-3 py-1.5 hover:bg-neutral-50 transition-colors"
-        >
-          Обновить
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => router.refresh()}
+            className="text-sm rounded-xl border border-neutral-300 px-3 py-1.5 hover:bg-neutral-50 transition-colors"
+          >
+            Обновить
+          </button>
+          <button
+            onClick={async () => {
+              await fetch("/api/admin/logout", { method: "POST" });
+              router.refresh();
+            }}
+            className="text-sm rounded-xl border border-neutral-300 px-3 py-1.5 text-red-500 hover:bg-red-50 transition-colors"
+          >
+            Выйти
+          </button>
+        </div>
       </div>
 
       {orders.length === 0 ? (
