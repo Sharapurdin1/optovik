@@ -4,16 +4,24 @@ import { useState } from "react";
 import Link from "next/link";
 import { useCart } from "@/lib/cart";
 import { formatPrice } from "@/lib/products";
-import { FREE_DELIVERY_FROM, calcDeliveryFee } from "@/lib/delivery";
+import { calcDeliveryFee, isOpenNow } from "@/lib/settings";
+import { useSettings } from "@/lib/settings-context";
 import { CheckoutModal } from "./CheckoutModal";
 
 export function CartView() {
   const { lines, totalPrice, totalCount, add, remove, clear } = useCart();
+  const settings = useSettings();
   const [checkoutOpen, setCheckoutOpen] = useState(false);
 
-  const deliveryFee = calcDeliveryFee(totalPrice);
+  const deliveryFee = calcDeliveryFee(totalPrice, settings);
   const grandTotal = totalPrice + deliveryFee;
-  const untilFree = Math.max(0, FREE_DELIVERY_FROM - totalPrice);
+  const untilFree = Math.max(0, settings.freeDeliveryFrom - totalPrice);
+
+  // Правила из настроек магазина.
+  const open = isOpenNow(settings);
+  const belowMin = settings.minOrder > 0 && totalPrice < settings.minOrder;
+  const needMore = settings.minOrder - totalPrice;
+  const canCheckout = open && !belowMin;
 
   if (lines.length === 0) {
     return (
@@ -101,9 +109,23 @@ export function CartView() {
           <span>Итого</span>
           <span className="tabular-nums text-emerald-600">{formatPrice(grandTotal)}</span>
         </div>
+        {!open && (
+          <div className="text-sm text-amber-700 bg-amber-50 rounded-lg px-3 py-2">
+            {settings.acceptingOrders
+              ? `Сейчас закрыто. Приём заказов с ${settings.workFrom} до ${settings.workTo}.`
+              : "Приём заказов временно приостановлен."}
+          </div>
+        )}
+        {open && belowMin && (
+          <div className="text-sm text-amber-700 bg-amber-50 rounded-lg px-3 py-2">
+            Минимальный заказ {formatPrice(settings.minOrder)}. Добавьте ещё на{" "}
+            {formatPrice(needMore)}.
+          </div>
+        )}
         <button
           onClick={() => setCheckoutOpen(true)}
-          className="w-full rounded-xl bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white font-semibold py-3 transition-colors"
+          disabled={!canCheckout}
+          className="w-full rounded-xl bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white font-semibold py-3 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Оформить заказ
         </button>

@@ -42,6 +42,17 @@ export const authCodes = sqliteTable("auth_codes", {
   attempts: integer("attempts").notNull().default(0),
 });
 
+// Настройки магазина (одна строка, id=1). Меняются владельцем в /manage.
+export const settings = sqliteTable("settings", {
+  id: integer("id").primaryKey(),
+  acceptingOrders: integer("accepting_orders").notNull().default(1), // 1/0
+  workFrom: text("work_from").notNull().default("09:00"),
+  workTo: text("work_to").notNull().default("21:00"),
+  minOrder: integer("min_order").notNull().default(0), // мин. заказ, ₽
+  deliveryFee: integer("delivery_fee").notNull().default(200),
+  freeDeliveryFrom: integer("free_delivery_from").notNull().default(2000),
+});
+
 // Счётчики частоты запросов (антиспам / защита СМС-баланса).
 export const rateLimits = sqliteTable("rate_limits", {
   key: text("key").primaryKey(), // например "code:phone:+7999..."

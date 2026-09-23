@@ -14,7 +14,8 @@
 
 import { db, schema } from "@/db";
 import { getCatalog } from "@/lib/catalog";
-import { calcDeliveryFee } from "@/lib/delivery";
+import { calcDeliveryFee, isOpenNow, type Settings } from "@/lib/settings";
+import { getSettings } from "@/lib/settings-server";
 import { rateLimit, clientIp, tooMany } from "@/lib/rate-limit";
 
 type OrderItem = {
@@ -123,7 +124,10 @@ function buildMessage(order: OrderPayload): string {
 
 // Пересчёт заказа по каталогу: берём НАСТОЯЩИЕ цены из каталога по id товара
 // и считаем суммы заново. Цены/итоги из браузера полностью игнорируются.
-async function recomputeOrder(order: OrderPayload): Promise<OrderPayload | null> {
+async function recomputeOrder(
+  order: OrderPayload,
+  settings: Settings
+): Promise<OrderPayload | null> {
   const { products } = await getCatalog();
   const byId = new Map(products.map((p) => [p.id, p]));
 
@@ -143,7 +147,7 @@ async function recomputeOrder(order: OrderPayload): Promise<OrderPayload | null>
   if (items.length === 0) return null;
 
   const itemsTotal = items.reduce((s, i) => s + i.price * i.quantity, 0);
-  const deliveryFee = calcDeliveryFee(itemsTotal);
+  const deliveryFee = calcDeliveryFee(itemsTotal, settings);
   return {
     ...order,
     items,
@@ -196,11 +200,31 @@ export async function POST(req: Request) {
     );
   }
 
+  // Настройки магазина: часы работы и минимальный заказ проверяем на сервере.
+  const settings = await getSettings();
+  if (!isOpenNow(settings)) {
+    return Response.json(
+      {
+        ok: false,
+        error: settings.acceptingOrders
+          ? `Магазин закрыт. Приём заказов с ${settings.workFrom} до ${settings.workTo}.`
+          : "Приём заказов временно приостановлен.",
+      },
+      { status: 403 }
+    );
+  }
+
   // Пересчитываем цены и суммы на сервере — источник истины, не браузер.
-  const trusted = await recomputeOrder(order);
+  const trusted = await recomputeOrder(order, settings);
   if (!trusted) {
     return Response.json(
       { ok: false, error: "Корзина пуста или товары недоступны" },
+      { status: 400 }
+    );
+  }
+  if (settings.minOrder > 0 && trusted.itemsTotal < settings.minOrder) {
+    return Response.json(
+      { ok: false, error: `Минимальный заказ ${settings.minOrder} ₽` },
       { status: 400 }
     );
   }

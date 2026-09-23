@@ -3,6 +3,7 @@
 // Интерфейс страницы владельца /manage: список всех заказов и смена статуса.
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { formatPrice } from "@/lib/products";
 import {
@@ -52,6 +53,12 @@ export function ManageOrders({ initialOrders }: { initialOrders: AdminOrder[] })
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold">Заказы</h1>
         <div className="flex items-center gap-2">
+          <Link
+            href="/manage/settings"
+            className="text-sm rounded-xl border border-neutral-300 px-3 py-1.5 hover:bg-neutral-50 transition-colors"
+          >
+            ⚙️ Настройки
+          </Link>
           <button
             onClick={() => router.refresh()}
             className="text-sm rounded-xl border border-neutral-300 px-3 py-1.5 hover:bg-neutral-50 transition-colors"
