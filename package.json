@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:studio": "drizzle-kit studio",
+    "db:studio:cloud": "node scripts/studio-cloud.mjs"
   },
   "dependencies": {
     "@libsql/client": "^0.18.0",
