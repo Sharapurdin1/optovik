@@ -29,6 +29,8 @@ export type RequestCodeResult = {
   demoCode?: string;
   phone?: string; // нормализованный номер — им подтверждаем код
   error?: string;
+  cooldownSec?: number; // пауза до следующего запроса кода
+  retryAfterSec?: number; // сколько ждать, если лимит превышен
 };
 export type VerifyResult = {
   ok: boolean;

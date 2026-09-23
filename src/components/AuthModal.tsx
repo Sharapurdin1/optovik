@@ -1,7 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth, formatPhone, formatPhoneInput } from "@/lib/auth";
+
+// Формат таймера: 60 → "1:00", 9 → "0:09".
+function fmtTimer(sec: number): string {
+  const m = Math.floor(sec / 60);
+  const s = String(sec % 60).padStart(2, "0");
+  return `${m}:${s}`;
+}
 
 export function AuthModal() {
   const { isModalOpen, closeLogin, requestCode, verifyCode, saveName } =
@@ -16,6 +23,14 @@ export function AuthModal() {
   const [demoCode, setDemoCode] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [resendIn, setResendIn] = useState(0); // секунды до повторной отправки
+
+  // Обратный отсчёт таймера повторной отправки кода.
+  useEffect(() => {
+    if (resendIn <= 0) return;
+    const t = setTimeout(() => setResendIn((s) => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resendIn]);
 
   if (!isModalOpen) return null;
 
@@ -28,6 +43,7 @@ export function AuthModal() {
     setDemoCode(null);
     setError(null);
     setBusy(false);
+    setResendIn(0);
   }
 
   function handleClose() {
@@ -53,7 +69,26 @@ export function AuthModal() {
     }
     setNormalized(res.phone);
     setDemoCode(res.demoCode ?? null); // код на экране только в демо-режиме
+    setResendIn(res.cooldownSec ?? 60); // запускаем таймер повторной отправки
     setStep("code");
+  }
+
+  // Повторная отправка кода (кнопка на шаге ввода кода).
+  async function handleResend() {
+    if (busy || resendIn > 0 || !normalized) return;
+    setBusy(true);
+    setError(null);
+    const res = await requestCode(normalized);
+    setBusy(false);
+    if (!res.ok) {
+      // Если сервер вернул, сколько ждать — заводим таймер на это время.
+      if (res.retryAfterSec) setResendIn(res.retryAfterSec);
+      setError(res.error ?? "Не удалось отправить код");
+      return;
+    }
+    setDemoCode(res.demoCode ?? null);
+    setCodeInput("");
+    setResendIn(res.cooldownSec ?? 60);
   }
 
   async function handleVerify() {
@@ -172,11 +207,25 @@ export function AuthModal() {
             >
               {busy ? "Проверяем…" : "Войти"}
             </button>
+            {resendIn > 0 ? (
+              <p className="w-full mt-3 text-center text-sm text-neutral-400">
+                Повторить код через {fmtTimer(resendIn)}
+              </p>
+            ) : (
+              <button
+                onClick={handleResend}
+                disabled={busy}
+                className="w-full mt-3 text-sm text-emerald-600 font-medium hover:underline disabled:opacity-60"
+              >
+                Отправить код повторно
+              </button>
+            )}
             <button
               onClick={() => {
                 setStep("phone");
                 setError(null);
                 setCodeInput("");
+                setResendIn(0);
               }}
               className="w-full mt-2 text-sm text-neutral-500 hover:text-neutral-800"
             >

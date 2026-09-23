@@ -13,17 +13,34 @@ export async function POST(req: Request) {
     );
   }
 
-  // Антиспам: не жжём СМС-баланс. 5 кодов на номер и 20 на устройство в час.
   const HOUR = 60 * 60 * 1000;
-  const byPhone = await rateLimit(`code:phone:${phone}`, 5, HOUR);
-  if (!byPhone.allowed) return tooMany(byPhone.retryAfterSec, "запросов кода");
-  const byIp = await rateLimit(`code:ip:${clientIp(req)}`, 20, HOUR);
+  const COOLDOWN_SEC = 60;
+
+  // Пауза 60 сек между запросами кода на один номер.
+  const cd = await rateLimit(`code:cooldown:${phone}`, 1, COOLDOWN_SEC * 1000);
+  if (!cd.allowed) {
+    return Response.json(
+      {
+        ok: false,
+        error: `Повторный код можно запросить через ${cd.retryAfterSec} сек.`,
+        retryAfterSec: cd.retryAfterSec,
+      },
+      { status: 429, headers: { "Retry-After": String(cd.retryAfterSec) } }
+    );
+  }
+
+  // Антиспам: не жжём СМС-баланс.
+  const byHour = await rateLimit(`code:phone:${phone}`, 5, HOUR); // 5 в час
+  if (!byHour.allowed) return tooMany(byHour.retryAfterSec, "запросов кода");
+  const byDay = await rateLimit(`code:phone:day:${phone}`, 10, 24 * HOUR); // 10 в сутки
+  if (!byDay.allowed) return tooMany(byDay.retryAfterSec, "запросов кода за сутки");
+  const byIp = await rateLimit(`code:ip:${clientIp(req)}`, 20, HOUR); // 20 на устройство/час
   if (!byIp.allowed) return tooMany(byIp.retryAfterSec, "запросов кода");
 
   const result = await requestLoginCode(phone);
-  // phone возвращаем в нормализованном виде — им же клиент подтвердит код.
+  // phone — в нормализованном виде; cooldownSec — для таймера на кнопке.
   return Response.json(
-    { ...result, phone },
+    { ...result, phone, cooldownSec: COOLDOWN_SEC },
     { status: result.ok ? 200 : 500 }
   );
 }

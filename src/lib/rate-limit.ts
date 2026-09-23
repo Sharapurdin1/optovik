@@ -63,12 +63,12 @@ export async function rateLimit(
 
 // Красивый ответ при превышении лимита.
 export function tooMany(retryAfterSec: number, what = "запросов"): Response {
-  const min = Math.ceil(retryAfterSec / 60);
+  let when: string;
+  if (retryAfterSec >= 3600) when = `${Math.ceil(retryAfterSec / 3600)} ч.`;
+  else if (retryAfterSec >= 60) when = `${Math.ceil(retryAfterSec / 60)} мин.`;
+  else when = `${retryAfterSec} сек.`;
   return Response.json(
-    {
-      ok: false,
-      error: `Слишком много ${what}. Попробуйте через ${min} мин.`,
-    },
+    { ok: false, error: `Слишком много ${what}. Попробуйте через ${when}` },
     { status: 429, headers: { "Retry-After": String(retryAfterSec) } }
   );
 }
