@@ -64,12 +64,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Восстанавливаем вход при заходе.
   useEffect(() => {
+    // 1) быстрый показ из localStorage (кэш);
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) setUser(JSON.parse(raw));
     } catch {
       // игнорируем повреждённые данные
     }
+    // 2) сверяемся с сервером — истина в серверной сессии.
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((data: { user: User | null }) => {
+        if (data.user) {
+          setUser(data.user);
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data.user));
+          } catch {}
+        } else {
+          // Сервер: действующей сессии нет → выходим.
+          setUser(null);
+          try {
+            localStorage.removeItem(STORAGE_KEY);
+          } catch {}
+        }
+      })
+      .catch(() => {
+        // нет связи — оставляем то, что показали из кэша
+      });
   }, []);
 
   const value = useMemo<AuthContextValue>(
@@ -83,8 +104,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           localStorage.removeItem(STORAGE_KEY);
         } catch {}
-        // На всякий случай закрываем и сессию панели владельца.
-        fetch("/api/admin/logout", { method: "POST" }).catch(() => {});
+        // Закрываем серверную сессию (и сессию панели владельца).
+        fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
       },
       requestCode: async (phone: string): Promise<RequestCodeResult> => {
         try {

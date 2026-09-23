@@ -4,6 +4,7 @@ import { normalizePhone } from "@/lib/phone";
 import { verifyLoginCode } from "@/lib/auth-server";
 import { ADMIN_COOKIE, sessionToken } from "@/lib/admin-auth";
 import { rateLimit, tooMany } from "@/lib/rate-limit";
+import { setSession } from "@/lib/session";
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
@@ -21,6 +22,11 @@ export async function POST(req: Request) {
   if (!lim.allowed) return tooMany(lim.retryAfterSec, "попыток");
 
   const result = await verifyLoginCode(phone, code);
+
+  // Успех — выдаём серверную сессию (подписанную cookie).
+  if (result.ok) {
+    await setSession(phone);
+  }
 
   // Если вошёл владелец — сразу открываем ему доступ к панели /manage.
   if (result.ok && result.isOwner) {
