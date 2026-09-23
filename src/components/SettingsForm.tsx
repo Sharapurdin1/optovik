@@ -120,6 +120,9 @@ export function SettingsForm({ initial }: { initial: Settings }) {
           </div>
           <p className="text-xs text-neutral-400 mt-1">
             Вне этих часов заказ оформить нельзя (время махачкалинское).
+            {s.workFrom === s.workTo
+              ? " Сейчас: круглосуточно (одинаковое время)."
+              : ""}
           </p>
         </div>
 

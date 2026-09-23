@@ -11,8 +11,9 @@ export type Settings = {
 
 export const DEFAULT_SETTINGS: Settings = {
   acceptingOrders: true,
-  workFrom: "09:00",
-  workTo: "21:00",
+  // Одинаковое время = круглосуточно (чтобы по умолчанию ничего не «закрывалось»).
+  workFrom: "00:00",
+  workTo: "00:00",
   minOrder: 0,
   deliveryFee: 200,
   freeDeliveryFrom: 2000,
