@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { normalizePhone } from "@/lib/phone";
 import { verifyLoginCode } from "@/lib/auth-server";
 import { ADMIN_COOKIE, sessionToken } from "@/lib/admin-auth";
+import { rateLimit, tooMany } from "@/lib/rate-limit";
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
@@ -14,6 +15,11 @@ export async function POST(req: Request) {
       { status: 400 }
     );
   }
+
+  // Защита от перебора кода: не больше 20 попыток на номер за 15 минут.
+  const lim = await rateLimit(`verify:phone:${phone}`, 20, 15 * 60 * 1000);
+  if (!lim.allowed) return tooMany(lim.retryAfterSec, "попыток");
+
   const result = await verifyLoginCode(phone, code);
 
   // Если вошёл владелец — сразу открываем ему доступ к панели /manage.

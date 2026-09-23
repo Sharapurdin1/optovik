@@ -42,6 +42,13 @@ export const authCodes = sqliteTable("auth_codes", {
   attempts: integer("attempts").notNull().default(0),
 });
 
+// Счётчики частоты запросов (антиспам / защита СМС-баланса).
+export const rateLimits = sqliteTable("rate_limits", {
+  key: text("key").primaryKey(), // например "code:phone:+7999..."
+  count: integer("count").notNull().default(0),
+  windowStart: integer("window_start").notNull(), // начало окна, unix-мс
+});
+
 // Одна позиция внутри заказа.
 export const orderItems = sqliteTable("order_items", {
   id: integer("id").primaryKey({ autoIncrement: true }),

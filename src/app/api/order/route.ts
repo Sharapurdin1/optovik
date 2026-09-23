@@ -15,6 +15,7 @@
 import { db, schema } from "@/db";
 import { getCatalog } from "@/lib/catalog";
 import { calcDeliveryFee } from "@/lib/delivery";
+import { rateLimit, clientIp, tooMany } from "@/lib/rate-limit";
 
 type OrderItem = {
   productId?: string;
@@ -176,6 +177,10 @@ export async function POST(req: Request) {
       { status: 503 }
     );
   }
+
+  // Антиспам заказов: не больше 30 с одного устройства в час.
+  const lim = await rateLimit(`order:ip:${clientIp(req)}`, 30, 60 * 60 * 1000);
+  if (!lim.allowed) return tooMany(lim.retryAfterSec, "заказов");
 
   let order: OrderPayload;
   try {
