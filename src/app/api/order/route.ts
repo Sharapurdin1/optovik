@@ -205,6 +205,20 @@ export async function POST(req: Request) {
     );
   }
 
+  // 1) СНАЧАЛА сохраняем заказ в базу — это источник истины. Если не удалось
+  //    сохранить, заказ не принят: честно просим повторить.
+  try {
+    await saveOrder(trusted);
+  } catch (e) {
+    console.error("Не удалось сохранить заказ в базу:", e);
+    return Response.json(
+      { ok: false, error: "Не удалось принять заказ. Попробуйте ещё раз" },
+      { status: 500 }
+    );
+  }
+
+  // 2) ЗАТЕМ уведомляем владельца в Telegram. Сбой здесь заказ НЕ теряет —
+  //    он уже в базе и виден в панели /manage.
   try {
     const tgRes = await fetch(
       `https://api.telegram.org/bot${token}/sendMessage`,
@@ -218,29 +232,18 @@ export async function POST(req: Request) {
         }),
       }
     );
-
     if (!tgRes.ok) {
-      const details = await tgRes.text();
-      console.error("Telegram error:", details);
-      return Response.json(
-        { ok: false, error: "Не удалось отправить заказ. Попробуйте ещё раз" },
-        { status: 502 }
+      console.error(
+        "⚠️ Заказ сохранён, но Telegram-уведомление не отправлено:",
+        await tgRes.text()
       );
     }
-
-    // Заказ доставлен владельцу — сохраняем его в базу для истории и маршрутов.
-    try {
-      await saveOrder(trusted);
-    } catch (e) {
-      console.error("⚠️ Заказ ушёл в Telegram, но не сохранился в базу:", e);
-    }
-
-    return Response.json({ ok: true });
   } catch (e) {
-    console.error("Order send failed:", e);
-    return Response.json(
-      { ok: false, error: "Сервис временно недоступен" },
-      { status: 500 }
+    console.error(
+      "⚠️ Заказ сохранён, но Telegram недоступен (уведомление не ушло):",
+      e
     );
   }
+
+  return Response.json({ ok: true });
 }
