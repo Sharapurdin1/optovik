@@ -8,18 +8,20 @@
     "start": "next start",
     "lint": "eslint",
     "db:studio": "drizzle-kit studio",
-    "db:studio:cloud": "node scripts/studio-cloud.mjs"
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate"
   },
   "dependencies": {
-    "@libsql/client": "^0.18.0",
     "drizzle-orm": "^1.0.0-rc.5-ab785fc",
     "next": "16.3.4",
+    "pg": "^8.23.0",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "drizzle-kit": "^1.0.0-rc.5-ab785fc",
@@ -27,5 +29,8 @@
     "eslint-config-next": "16.3.4",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "engines": {
+    "node": ">=24"
   }
 }

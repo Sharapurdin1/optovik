@@ -7,7 +7,8 @@ import { db, schema } from "@/db";
 
 export type RateResult = { allowed: boolean; retryAfterSec: number };
 
-// IP клиента (за Vercel — в заголовке x-forwarded-for).
+// IP клиента. Caddy перед приложением сам ставит x-forwarded-for
+// (заголовок от клиента он отбрасывает), поэтому первому значению можно верить.
 export function clientIp(req: Request): string {
   const xff = req.headers.get("x-forwarded-for");
   if (xff) return xff.split(",")[0].trim();

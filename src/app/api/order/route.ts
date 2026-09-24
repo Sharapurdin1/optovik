@@ -44,36 +44,37 @@ type OrderPayload = {
   };
 };
 
-// Сохраняем заказ в базу данных. Ошибку не пробрасываем наружу:
-// заказ уже ушёл владельцу в Telegram, терять уведомление из-за базы нельзя.
+// Сохраняем заказ в базу данных одной транзакцией: либо заказ целиком
+// (шапка + позиции), либо ничего. Время и статус («Принят») ставит база,
+// а не браузер.
 async function saveOrder(order: OrderPayload): Promise<void> {
   const c = order.customer;
   const id = order.id?.trim() || String(Date.now());
-  await db.insert(schema.orders).values({
-    id,
-    createdAt: order.createdAt?.trim() || new Date().toISOString(),
-    name: c.name.trim(),
-    phone: c.phone.trim(),
-    address: c.address.trim(),
-    street: c.street?.trim() || null,
-    payment: c.payment,
-    comment: c.comment?.trim() ?? "",
-    itemsTotal: order.itemsTotal,
-    deliveryFee: order.deliveryFee,
-    total: order.total,
-    status: order.status?.trim() || "Принят",
+  await db.transaction(async (tx) => {
+    await tx.insert(schema.orders).values({
+      id,
+      name: c.name.trim(),
+      phone: c.phone.trim(),
+      address: c.address.trim(),
+      street: c.street?.trim() || null,
+      payment: c.payment,
+      comment: c.comment?.trim() ?? "",
+      itemsTotal: order.itemsTotal,
+      deliveryFee: order.deliveryFee,
+      total: order.total,
+    });
+    if (order.items.length > 0) {
+      await tx.insert(schema.orderItems).values(
+        order.items.map((it) => ({
+          orderId: id,
+          title: it.title,
+          unit: it.unit,
+          price: it.price,
+          quantity: it.quantity,
+        }))
+      );
+    }
   });
-  if (order.items.length > 0) {
-    await db.insert(schema.orderItems).values(
-      order.items.map((it) => ({
-        orderId: id,
-        title: it.title,
-        unit: it.unit,
-        price: it.price,
-        quantity: it.quantity,
-      }))
-    );
-  }
 }
 
 function escapeHtml(text: string): string {

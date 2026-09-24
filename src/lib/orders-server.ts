@@ -9,7 +9,9 @@ import type { OrderStatus } from "./order-status";
 export { ORDER_STATUSES, isOrderStatus, type OrderStatus } from "./order-status";
 
 export type AdminOrderItem = typeof schema.orderItems.$inferSelect;
-export type AdminOrder = typeof schema.orders.$inferSelect & {
+// createdAt отдаём ISO-строкой: так её одинаково понимают сервер и браузер.
+export type AdminOrder = Omit<typeof schema.orders.$inferSelect, "createdAt"> & {
+  createdAt: string;
   items: AdminOrderItem[];
 };
 
@@ -35,7 +37,11 @@ export async function getAllOrders(): Promise<AdminOrder[]> {
     byOrder.set(it.orderId, arr);
   }
 
-  return orders.map((o) => ({ ...o, items: byOrder.get(o.id) ?? [] }));
+  return orders.map((o) => ({
+    ...o,
+    createdAt: o.createdAt.toISOString(),
+    items: byOrder.get(o.id) ?? [],
+  }));
 }
 
 // Актуальные статусы для набора заказов (по их id).

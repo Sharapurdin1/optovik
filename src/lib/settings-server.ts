@@ -14,7 +14,7 @@ export async function getSettings(): Promise<Settings> {
     const r = rows[0];
     if (!r) return DEFAULT_SETTINGS;
     return {
-      acceptingOrders: r.acceptingOrders === 1,
+      acceptingOrders: r.acceptingOrders,
       workFrom: r.workFrom,
       workTo: r.workTo,
       minOrder: r.minOrder,
@@ -30,7 +30,7 @@ export async function getSettings(): Promise<Settings> {
 export async function saveSettings(s: Settings): Promise<void> {
   const row = {
     id: 1,
-    acceptingOrders: s.acceptingOrders ? 1 : 0,
+    acceptingOrders: s.acceptingOrders,
     workFrom: s.workFrom,
     workTo: s.workTo,
     minOrder: s.minOrder,

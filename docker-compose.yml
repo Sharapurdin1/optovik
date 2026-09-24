@@ -1,0 +1,18 @@
+# Локальная база PostgreSQL для разработки (если стоит Docker).
+#   docker compose up -d
+#   DATABASE_URL=postgres://optovik:optovik@localhost:5432/optovik
+# Без Docker можно поставить Postgres.app — см. .env.local.example.
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: optovik
+      POSTGRES_PASSWORD: optovik
+      POSTGRES_DB: optovik
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:

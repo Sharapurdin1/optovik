@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
+import { connection } from "next/server";
 import "./globals.css";
 import { CartProvider } from "@/lib/cart";
 import { AuthProvider } from "@/lib/auth";
@@ -23,6 +24,10 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
+  // Страницы собираются на каждый запрос: настройки (и скоро каталог) живут в
+  // базе и меняются владельцем. Заодно сборка Docker-образа не лезет в базу.
+  await connection();
+
   // Загружаем каталог из Google-таблицы (или из встроенного списка, если
   // таблица ещё не подключена) и раздаём его всем экранам.
   const { products, categories } = await getCatalog();

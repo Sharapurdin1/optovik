@@ -96,11 +96,7 @@ export async function verifyLoginCode(
     .from(schema.customers)
     .where(eq(schema.customers.phone, phone));
   if (existing.length === 0) {
-    await db.insert(schema.customers).values({
-      phone,
-      name: null,
-      createdAt: new Date().toISOString(),
-    });
+    await db.insert(schema.customers).values({ phone, name: null });
   }
 
   const name = existing[0]?.name ?? null;
