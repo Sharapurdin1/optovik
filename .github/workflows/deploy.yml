@@ -53,9 +53,11 @@ jobs:
       - name: SSH-доступ к серверу
         run: |
           install -m 700 -d ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" | tr -d '\r' > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          echo "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          ssh-keygen -y -f ~/.ssh/id_ed25519 > /dev/null \
+            || { echo "::error::Секрет SSH_PRIVATE_KEY повреждён — вставьте ключ целиком, от BEGIN до END"; exit 1; }
+          printf '%s\n' "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
 
       - name: Скопировать конфиги
         run: scp deploy/docker-compose.prod.yml deploy/Caddyfile deploy@${{ secrets.SSH_HOST }}:/opt/optovik/
