@@ -55,8 +55,14 @@ jobs:
           install -m 700 -d ~/.ssh
           printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" | tr -d '\r' > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          ssh-keygen -y -f ~/.ssh/id_ed25519 > /dev/null \
-            || { echo "::error::Секрет SSH_PRIVATE_KEY повреждён — вставьте ключ целиком, от BEGIN до END"; exit 1; }
+          if ! ssh-keygen -y -f ~/.ssh/id_ed25519 > /dev/null; then
+            # Диагностика без утечки: только заголовки и размер, не сам ключ.
+            echo "Строк: $(wc -l < ~/.ssh/id_ed25519), символов: $(wc -c < ~/.ssh/id_ed25519)"
+            echo "Первая строка: $(head -1 ~/.ssh/id_ed25519 | grep -o -- '-----[A-Z ]*-----' || echo 'не заголовок ключа')"
+            echo "Последняя строка: $(tail -1 ~/.ssh/id_ed25519 | grep -o -- '-----[A-Z ]*-----' || echo 'не заголовок ключа')"
+            echo "::error::Секрет SSH_PRIVATE_KEY повреждён — вставьте ключ целиком, от BEGIN до END"
+            exit 1
+          fi
           printf '%s\n' "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
 
       - name: Скопировать конфиги
