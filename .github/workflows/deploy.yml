@@ -1,0 +1,83 @@
+# Автодеплой: push в main → собрать Docker-образ → GHCR → выкатить на VPS.
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+env:
+  IMAGE: ghcr.io/sharapurdin1/optovik
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:${{ github.sha }}
+            ${{ env.IMAGE }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: SSH-доступ к серверу
+        run: |
+          install -m 700 -d ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          echo "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+
+      - name: Скопировать конфиги
+        run: scp deploy/docker-compose.prod.yml deploy/Caddyfile deploy@${{ secrets.SSH_HOST }}:/opt/optovik/
+
+      - name: Выкатить новую версию
+        run: |
+          ssh deploy@${{ secrets.SSH_HOST }} bash -s <<'SCRIPT'
+          set -euo pipefail
+          cd /opt/optovik
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          export IMAGE_TAG="${{ github.sha }}"
+          docker compose -f docker-compose.prod.yml pull
+          docker compose -f docker-compose.prod.yml up -d --remove-orphans
+          docker logout ghcr.io
+
+          # Ждём, пока приложение станет здоровым (миграции + проверка базы).
+          for i in $(seq 1 30); do
+            status=$(docker inspect -f '{{.State.Health.Status}}' "$(docker compose -f docker-compose.prod.yml ps -q app)")
+            [ "$status" = "healthy" ] && echo "✅ Приложение здорово" && break
+            sleep 5
+          done
+          [ "$status" = "healthy" ] || { docker compose -f docker-compose.prod.yml logs --tail 80 app; exit 1; }
+
+          docker image prune -f
+          SCRIPT

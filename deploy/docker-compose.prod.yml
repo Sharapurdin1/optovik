@@ -1,0 +1,31 @@
+# Боевой запуск на VPS (/opt/optovik). Копируется туда автодеплоем.
+# Секреты приложения — в /opt/optovik/.env (лежит только на сервере).
+services:
+  app:
+    image: ghcr.io/sharapurdin1/optovik:${IMAGE_TAG:-latest}
+    env_file: .env
+    restart: unless-stopped
+    expose:
+      - "3000"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      # Пока домена нет — сайт открывается по IP на :80.
+      SITE_ADDRESS: ${SITE_ADDRESS:-:80}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:

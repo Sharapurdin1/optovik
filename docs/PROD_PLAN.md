@@ -33,16 +33,16 @@
 - [x] Проверка env при старте (понятная ошибка, если нет обязательных переменных)
 
 ## Этап 1. Развёртывание на Timeweb Cloud
-- [ ] Аккаунт Timeweb Cloud, пополнить баланс
-- [ ] Создать VPS (Ubuntu 24.04, от 2 ГБ RAM, регион Москва/СПб), вход только по SSH-ключу
+- [x] Аккаунт Timeweb Cloud, пополнить баланс
+- [x] Создать VPS (Ubuntu 24.04, от 2 ГБ RAM, регион Москва/СПб), вход только по SSH-ключу
 - [ ] Создать Managed PostgreSQL в той же приватной сети, включить бэкапы
-- [ ] Защита сервера: отдельный пользователь с sudo, запрет входа root и по паролю,
+- [x] Защита сервера: отдельный пользователь с sudo, запрет входа root и по паролю,
       firewall (ufw: открыты только 22, 80, 443), fail2ban, автообновления безопасности
-- [ ] Установить Docker + Docker Compose
-- [ ] `docker-compose.prod.yml`: сервисы `app` (наш образ) и `caddy`; `.env` с секретами
+- [x] Установить Docker + Docker Compose
+- [x] `docker-compose.prod.yml`: сервисы `app` (наш образ) и `caddy`; `.env` с секретами
       лежит только на сервере (`DATABASE_URL`, `SESSION_SECRET`, `ADMIN_PASSWORD`,
       `OWNER_PHONES`, `TELEGRAM_*`, `SMS_AERO_*`, `S3_*`, `APP_URL`)
-- [ ] GitHub Actions: сборка образа → GHCR → деплой по SSH; секреты в GitHub Secrets
+- [~] GitHub Actions: сборка образа → GHCR → деплой по SSH; секреты в GitHub Secrets
 - [x] Миграции БД запускаются автоматически при деплое (при старте контейнера)
 - [ ] Проверить сайт по IP сервера: каталог, вход, заказ, /manage
 - [ ] Отключить проект на Vercel и базу Turso (после переезда)
@@ -113,3 +113,4 @@
 ## Журнал
 - 2026-09-24 — план составлен. Решения: PostgreSQL (Managed, Timeweb), VPS + Docker, переносить данные из Turso не нужно.
 - 2026-09-24 — этап 0 (код): Postgres + миграции, Dockerfile (standalone), /api/health, проверка env при старте. Проверено сквозным тестом на временном Postgres. Статус и время заказа теперь ставит сервер, заказ пишется одной транзакцией. Код запушен на GitHub — этап 0 закрыт.
+- 2026-09-25 — VPS `optovik-app` 72.56.239.246 (приватный 192.168.0.4): пользователь deploy (вход только по ключу, root закрыт), ufw 22/80/443, fail2ban, автообновления, swap 2 ГБ, Docker 29. Каталог /opt/optovik. Конфиги: deploy/docker-compose.prod.yml, deploy/Caddyfile, .github/workflows/deploy.yml. Для CI — отдельный SSH-ключ.
