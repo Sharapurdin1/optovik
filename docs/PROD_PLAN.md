@@ -22,7 +22,7 @@
 ---
 
 ## Этап 0. Подготовка кода и репозитория
-- [ ] Создать приватный репозиторий на GitHub, запушить `main`
+- [x] Создать приватный репозиторий на GitHub, запушить `main` (github.com/Sharapurdin1/optovik)
 - [x] `next.config.ts`: `output: "standalone"` (компактный образ для Docker)
 - [x] `Dockerfile` (multi-stage: deps → build → runner на `node:24-alpine`) + `.dockerignore`
 - [x] Healthcheck-эндпоинт `GET /api/health` (проверяет подключение к БД)
@@ -112,4 +112,4 @@
 
 ## Журнал
 - 2026-09-24 — план составлен. Решения: PostgreSQL (Managed, Timeweb), VPS + Docker, переносить данные из Turso не нужно.
-- 2026-09-24 — этап 0 (код): Postgres + миграции, Dockerfile (standalone), /api/health, проверка env при старте. Проверено сквозным тестом на временном Postgres. Статус и время заказа теперь ставит сервер, заказ пишется одной транзакцией. Осталось: GitHub-репозиторий.
+- 2026-09-24 — этап 0 (код): Postgres + миграции, Dockerfile (standalone), /api/health, проверка env при старте. Проверено сквозным тестом на временном Postgres. Статус и время заказа теперь ставит сервер, заказ пишется одной транзакцией. Код запушен на GitHub — этап 0 закрыт.
