@@ -5,6 +5,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, btnPrimary, card, inputCls } from "./ui";
+import { ConfirmButton } from "./ConfirmButton";
 
 type Cat = { id: string; title: string; emoji: string; active: boolean; productCount: number };
 
@@ -51,7 +52,6 @@ export function CategoriesAdmin({ categories }: { categories: Cat[] }) {
   }
 
   function remove(c: Cat) {
-    if (!confirm(`Удалить категорию «${c.title}»?`)) return;
     run(api(`/api/admin/categories/${encodeURIComponent(c.id)}`, "DELETE"));
   }
 
@@ -113,15 +113,15 @@ export function CategoriesAdmin({ categories }: { categories: Cat[] }) {
               >
                 {c.active ? "видна" : "скрыта"}
               </button>
-              <button
-                onClick={() => remove(c)}
+              <ConfirmButton
+                onConfirm={() => remove(c)}
                 disabled={busy || c.productCount > 0}
-                title={c.productCount > 0 ? "Сначала перенесите товары" : "Удалить"}
-                className="shrink-0 text-red-500 px-1 disabled:opacity-20"
-                aria-label="Удалить"
+                confirmText="✓"
+                title={c.productCount > 0 ? "Сначала перенесите товары" : "Удалить (нажмите дважды)"}
+                className="shrink-0 text-red-500 px-2 rounded-lg disabled:opacity-20"
               >
                 ×
-              </button>
+              </ConfirmButton>
             </div>
           ))}
         </div>

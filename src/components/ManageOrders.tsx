@@ -34,10 +34,12 @@ export function ManageOrders({
   const router = useRouter();
   const [orders, setOrders] = useState<AdminOrder[]>(initialOrders);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [error, setError] = useState<{ id: string; text: string } | null>(null);
 
   async function changeStatus(id: string, status: OrderStatus) {
     const prev = orders;
     setBusyId(id);
+    setError(null);
     // Оптимистично меняем на экране сразу.
     setOrders((os) => os.map((o) => (o.id === id ? { ...o, status } : o)));
     try {
@@ -51,7 +53,10 @@ export function ManageOrders({
       router.refresh(); // остатки на складе могли измениться
     } catch (e) {
       setOrders(prev); // откат
-      alert((e instanceof Error && e.message) || "Не удалось сменить статус. Попробуйте ещё раз.");
+      setError({
+        id,
+        text: (e instanceof Error && e.message) || "Не удалось сменить статус. Попробуйте ещё раз.",
+      });
     } finally {
       setBusyId(null);
     }
@@ -149,6 +154,9 @@ export function ManageOrders({
               )}
 
               {/* Смена статуса */}
+              {error?.id === order.id && (
+                <p className="text-sm text-red-500 mb-2">{error.text}</p>
+              )}
               <div className="flex flex-wrap gap-2 border-t border-neutral-100 pt-3">
                 {ORDER_STATUSES.map((s) => {
                   const active = order.status === s;

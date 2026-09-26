@@ -77,6 +77,7 @@ export function ProductsAdmin({
   const [show, setShow] = useState<"all" | "active" | "hidden" | "out">("all");
   const [busy, setBusy] = useState<string | null>(null);
   const [importMsg, setImportMsg] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -92,16 +93,17 @@ export function ProductsAdmin({
 
   async function toggleActive(p: ProductRow) {
     setBusy(p.id);
+    setError(null);
     const r = await api(`/api/admin/products/${encodeURIComponent(p.id)}`, "PATCH", {
       active: !p.active,
     });
     setBusy(null);
-    if (!r.ok) return alert(r.error);
+    if (!r.ok) return setError(`«${p.title}»: ${r.error}`);
     router.refresh();
   }
 
   async function runImport() {
-    if (!confirm("Перенести товары из Google-таблицы? Уже существующие товары не изменятся.")) return;
+    // Без подтверждения: импорт только добавляет новые товары и ничего не меняет.
     setBusy("import");
     setImportMsg(null);
     const r = await api<{ source: string; products: number; categories: number; skipped: number }>(
@@ -184,6 +186,7 @@ export function ProductsAdmin({
             ))}
           </div>
 
+          {error && <p className="text-sm text-red-500 mb-3">{error}</p>}
           {visible.length === 0 ? (
             <p className="text-center text-neutral-500 py-10">Ничего не найдено</p>
           ) : (

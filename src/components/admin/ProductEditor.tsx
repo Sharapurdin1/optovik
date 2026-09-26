@@ -9,6 +9,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { AdminProduct } from "@/lib/catalog-admin";
 import { StockBadge } from "./ProductsAdmin";
+import { ConfirmButton } from "./ConfirmButton";
 import { api, btnDanger, btnPrimary, btnSecondary, card, inputCls, labelCls } from "./ui";
 
 type Category = { id: string; title: string };
@@ -94,9 +95,8 @@ export function ProductEditor({
 
   async function remove() {
     if (!product) return;
-    if (!confirm(`Удалить «${product.title}» навсегда? В старых заказах он останется.`)) return;
     const r = await api(`/api/admin/products/${encodeURIComponent(product.id)}`, "DELETE");
-    if (!r.ok) return alert(r.error);
+    if (!r.ok) return setMsg({ ok: false, text: r.error ?? "Не удалось удалить" });
     router.replace("/manage/products");
     router.refresh();
   }
@@ -216,10 +216,19 @@ export function ProductEditor({
         <>
           <ImagesSection product={product} enabled={uploadsEnabled} />
           <StockSection product={product} />
-          <section className={card}>
-            <button onClick={remove} className={btnDanger}>
+          <section className={`${card} space-y-2`}>
+            <ConfirmButton
+              onConfirm={remove}
+              confirmText="Точно удалить навсегда?"
+              className={btnDanger}
+            >
               Удалить товар
-            </button>
+            </ConfirmButton>
+            <p className="text-xs text-neutral-400">
+              В старых заказах товар останется. Чтобы просто убрать из магазина — снимите галочку
+              «Показывать в магазине».
+            </p>
+            {msg && !msg.ok && <p className="text-sm text-red-500">{msg.text}</p>}
           </section>
         </>
       ) : (
@@ -284,7 +293,6 @@ function ImagesSection({ product, enabled }: { product: AdminProduct; enabled: b
   }
 
   async function remove(id: number) {
-    if (!confirm("Удалить это фото?")) return;
     setBusy(true);
     const r = await api(`${base}/${id}`, "DELETE");
     setBusy(false);
@@ -322,14 +330,15 @@ function ImagesSection({ product, enabled }: { product: AdminProduct; enabled: b
                 >
                   ←
                 </button>
-                <button
-                  onClick={() => remove(img.id)}
+                <ConfirmButton
+                  onConfirm={() => remove(img.id)}
                   disabled={busy}
+                  confirmText="✓"
+                  title="Удалить фото (нажмите ещё раз для подтверждения)"
                   className="flex-1 rounded-lg border border-red-200 text-red-500 text-sm disabled:opacity-30"
-                  aria-label="Удалить"
                 >
                   ×
-                </button>
+                </ConfirmButton>
                 <button
                   onClick={() => move(i, 1)}
                   disabled={busy || i === product.images.length - 1}
@@ -415,16 +424,14 @@ function StockSection({ product }: { product: AdminProduct }) {
       <div className="flex items-center justify-between">
         <h2 className="font-bold text-lg">Склад</h2>
         {tracked && (
-          <button
-            onClick={() => {
-              if (confirm("Перестать вести остаток? Товар будет всегда «в наличии»."))
-                submit("Не вести");
-            }}
+          <ConfirmButton
+            onConfirm={() => submit("Не вести")}
             disabled={busy}
-            className="text-xs text-neutral-400 hover:text-neutral-700"
+            confirmText="товар станет всегда «в наличии» — точно?"
+            className="text-xs text-neutral-400 hover:text-neutral-700 rounded-lg px-2 py-1"
           >
             не вести остаток
-          </button>
+          </ConfirmButton>
         )}
       </div>
 
