@@ -3,6 +3,8 @@
 // Telegram — только «звонок»: пришёл новый заказ. Полный состав заказа,
 // телефон и адрес — в админке по ссылке из сообщения.
 // Настройки: TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, APP_URL (адрес сайта).
+// TELEGRAM_API_URL — необязательный адрес прокси к Bot API (если из России
+// перестанет открываться api.telegram.org).
 
 import "server-only";
 
@@ -71,7 +73,8 @@ export async function notifyNewOrder(order: TrustedOrder): Promise<void> {
     : `${buildOrderMessage(order)}\n\n🔗 ${escapeHtml(url)}`;
 
   try {
-    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    const api = (process.env.TELEGRAM_API_URL ?? "https://api.telegram.org").replace(/\/+$/, "");
+    const res = await fetch(`${api}/bot${token}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

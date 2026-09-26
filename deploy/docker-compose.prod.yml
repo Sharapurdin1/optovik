@@ -27,6 +27,13 @@ services:
       - caddy_data:/data
       - caddy_config:/config
 
+# IPv6 для контейнеров: из российских дата-центров api.telegram.org
+# доступен только по IPv6 (IPv4 блокируется), а без него не уходят
+# уведомления о заказах.
+networks:
+  default:
+    enable_ipv6: true
+
 volumes:
   caddy_data:
   caddy_config:
