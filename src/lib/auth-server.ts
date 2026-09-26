@@ -4,6 +4,7 @@
 // Аккаунт клиента хранится в базе (таблица customers).
 
 import "server-only";
+import { randomInt } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { sendSms, smsConfigured } from "./sms";
@@ -17,10 +18,20 @@ export type RequestCodeResult = {
   error?: string;
 };
 
+// Демо-режим (код на экране) — только при разработке. На боевом сервере без
+// СМС-сервиса вход по телефону выключен: иначе любой мог бы войти под чужим
+// номером, увидев «его» код на экране.
+function demoLoginAllowed(): boolean {
+  return process.env.NODE_ENV !== "production";
+}
+
 export async function requestLoginCode(
   phone: string
 ): Promise<RequestCodeResult> {
-  const code = String(Math.floor(1000 + Math.random() * 9000));
+  if (!smsConfigured() && !demoLoginAllowed()) {
+    return { ok: false, error: "Вход по телефону пока недоступен" };
+  }
+  const code = String(randomInt(1000, 10000)); // криптостойкий, не Math.random
   const expiresAt = Date.now() + CODE_TTL_MS;
 
   await db
@@ -34,7 +45,7 @@ export async function requestLoginCode(
   const sms = await sendSms(phone, `Код для входа в Оптовик: ${code}`);
   if (sms.sent) return { ok: true };
 
-  // СМС-сервис не настроен — работаем в демо-режиме (код на экран).
+  // СМС-сервис не настроен (только при разработке) — код на экран.
   if (!smsConfigured()) return { ok: true, demoCode: code };
 
   // Настроен, но отправка не удалась — честная ошибка.
@@ -100,7 +111,9 @@ export async function verifyLoginCode(
   }
 
   const name = existing[0]?.name ?? null;
-  return { ok: true, name, needName: !name, isOwner: isOwnerPhone(phone) };
+  // Права владельца — только если код действительно пришёл по СМС на этот номер.
+  const isOwner = smsConfigured() && isOwnerPhone(phone);
+  return { ok: true, name, needName: !name, isOwner };
 }
 
 // Сохранить имя клиента (после регистрации).

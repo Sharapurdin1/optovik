@@ -41,6 +41,6 @@ export async function POST(req: Request) {
   // phone — в нормализованном виде; cooldownSec — для таймера на кнопке.
   return Response.json(
     { ...result, phone, cooldownSec: COOLDOWN_SEC },
-    { status: result.ok ? 200 : 500 }
+    { status: result.ok ? 200 : 503 }
   );
 }
