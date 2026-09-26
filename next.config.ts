@@ -10,6 +10,13 @@ const nextConfig: NextConfig = {
     "/*": ["./drizzle/**/*"],
   },
   poweredByHeader: false,
+  images: {
+    // Фото товаров лежат в S3 (Timeweb). Адрес известен при сборке образа,
+    // поэтому задан здесь, а не в .env сервера.
+    remotePatterns: [new URL("https://optovik-images.s3.twcstorage.ru/products/**")],
+    // Ключи фото уникальны и не меняются — кэшируем уменьшенные копии надолго.
+    minimumCacheTTL: 60 * 60 * 24 * 30,
+  },
 };
 
 export default nextConfig;

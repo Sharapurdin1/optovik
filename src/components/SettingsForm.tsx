@@ -3,7 +3,6 @@
 // Форма настроек магазина для владельца (/manage/settings).
 
 import { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Settings } from "@/lib/settings";
 
@@ -70,15 +69,7 @@ export function SettingsForm({ initial }: { initial: Settings }) {
 
   return (
     <div className="mx-auto max-w-md px-4 py-4">
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-bold">Настройки</h1>
-        <Link
-          href="/manage"
-          className="text-sm rounded-xl border border-neutral-300 px-3 py-1.5 hover:bg-neutral-50 transition-colors"
-        >
-          ← Заказы
-        </Link>
-      </div>
+      <h1 className="text-2xl font-bold mb-4">Настройки</h1>
 
       <div className="bg-white rounded-2xl border border-neutral-200 p-4 space-y-5">
         {/* Приём заказов */}

@@ -6,6 +6,7 @@ export const ORDER_STATUSES = [
   "Собираем",
   "В пути",
   "Доставлен",
+  "Отменён",
 ] as const;
 
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
@@ -22,4 +23,8 @@ export const STATUS_STYLE: Record<string, string> = {
   Собираем: "bg-amber-50 text-amber-700",
   "В пути": "bg-blue-50 text-blue-700",
   Доставлен: "bg-emerald-50 text-emerald-700",
+  Отменён: "bg-red-50 text-red-600",
 };
+
+// Отменённый заказ не держит товар: при отмене остатки возвращаются на склад.
+export const CANCELLED: OrderStatus = "Отменён";

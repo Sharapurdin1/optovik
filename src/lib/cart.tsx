@@ -87,10 +87,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
       openCart: () => setIsOpen(true),
       closeCart: () => setIsOpen(false),
       add: (productId: string) =>
-        setCounts((prev) => ({
-          ...prev,
-          [productId]: (prev[productId] ?? 0) + 1,
-        })),
+        setCounts((prev) => {
+          const current = prev[productId] ?? 0;
+          // Больше, чем есть на складе, положить нельзя.
+          const stock = productById(productId)?.stock;
+          if (stock != null && current >= stock) return prev;
+          return { ...prev, [productId]: current + 1 };
+        }),
       remove: (productId: string) =>
         setCounts((prev) => {
           const next = { ...prev };

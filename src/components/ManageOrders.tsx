@@ -1,6 +1,7 @@
 "use client";
 
-// Интерфейс страницы владельца /manage: список всех заказов и смена статуса.
+// Интерфейс страницы владельца: список заказов (/manage) или один заказ
+// (/manage/orders/:id — сюда ведёт ссылка из Telegram) и смена статуса.
 
 import { useState } from "react";
 import Link from "next/link";
@@ -23,7 +24,13 @@ function formatDate(iso: string): string {
   });
 }
 
-export function ManageOrders({ initialOrders }: { initialOrders: AdminOrder[] }) {
+export function ManageOrders({
+  initialOrders,
+  single = false,
+}: {
+  initialOrders: AdminOrder[];
+  single?: boolean;
+}) {
   const router = useRouter();
   const [orders, setOrders] = useState<AdminOrder[]>(initialOrders);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -39,10 +46,12 @@ export function ManageOrders({ initialOrders }: { initialOrders: AdminOrder[] })
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, status }),
       });
-      if (!res.ok) throw new Error("status update failed");
-    } catch {
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) throw new Error(data.error ?? "");
+      router.refresh(); // остатки на складе могли измениться
+    } catch (e) {
       setOrders(prev); // откат
-      alert("Не удалось сменить статус. Попробуйте ещё раз.");
+      alert((e instanceof Error && e.message) || "Не удалось сменить статус. Попробуйте ещё раз.");
     } finally {
       setBusyId(null);
     }
@@ -51,30 +60,19 @@ export function ManageOrders({ initialOrders }: { initialOrders: AdminOrder[] })
   return (
     <div className="mx-auto max-w-3xl px-4 py-4">
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-bold">Заказы</h1>
-        <div className="flex items-center gap-2">
-          <Link
-            href="/manage/settings"
-            className="text-sm rounded-xl border border-neutral-300 px-3 py-1.5 hover:bg-neutral-50 transition-colors"
-          >
-            ⚙️ Настройки
+        {single ? (
+          <Link href="/manage" className="text-sm text-neutral-500 hover:text-neutral-800">
+            ← Все заказы
           </Link>
-          <button
-            onClick={() => router.refresh()}
-            className="text-sm rounded-xl border border-neutral-300 px-3 py-1.5 hover:bg-neutral-50 transition-colors"
-          >
-            Обновить
-          </button>
-          <button
-            onClick={async () => {
-              await fetch("/api/admin/logout", { method: "POST" });
-              router.refresh();
-            }}
-            className="text-sm rounded-xl border border-neutral-300 px-3 py-1.5 text-red-500 hover:bg-red-50 transition-colors"
-          >
-            Выйти
-          </button>
-        </div>
+        ) : (
+          <h1 className="text-2xl font-bold">Заказы</h1>
+        )}
+        <button
+          onClick={() => router.refresh()}
+          className="text-sm rounded-xl border border-neutral-300 px-3 py-1.5 hover:bg-neutral-50 transition-colors"
+        >
+          Обновить
+        </button>
       </div>
 
       {orders.length === 0 ? (
@@ -93,9 +91,12 @@ export function ManageOrders({ initialOrders }: { initialOrders: AdminOrder[] })
               className="bg-white rounded-2xl border border-neutral-200 p-4"
             >
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm text-neutral-500">
-                  {formatDate(order.createdAt)}
-                </span>
+                <Link
+                  href={`/manage/orders/${order.id}`}
+                  className="text-sm text-neutral-500 hover:text-emerald-600"
+                >
+                  №{order.id} · {formatDate(order.createdAt)}
+                </Link>
                 <span
                   className={`text-xs font-medium rounded-full px-2.5 py-1 ${
                     STATUS_STYLE[order.status] ?? "bg-neutral-100 text-neutral-700"

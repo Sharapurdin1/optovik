@@ -13,7 +13,102 @@ import {
   serial,
   timestamp,
   index,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
+
+// ---------------------------------------------------------------------------
+// Каталог (ведётся в админке /manage)
+// ---------------------------------------------------------------------------
+
+// Категория товаров.
+export const categories = pgTable("categories", {
+  id: text("id").primaryKey(), // короткий идентификатор, например "dairy"
+  title: text("title").notNull(),
+  emoji: text("emoji").notNull().default("📦"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+// Товар.
+export const products = pgTable(
+  "products",
+  {
+    id: text("id").primaryKey(), // он же хранится в корзинах покупателей
+    title: text("title").notNull(),
+    categoryId: text("category_id").references(() => categories.id, {
+      onDelete: "set null",
+    }),
+    price: integer("price").notNull(), // ₽, целые
+    oldPrice: integer("old_price"), // зачёркнутая цена (скидка)
+    unit: text("unit").notNull().default("шт"), // «кг», «1 л», «10 шт»…
+    emoji: text("emoji").notNull().default("📦"), // запасная «картинка», пока нет фото
+    description: text("description").notNull().default(""),
+    sku: text("sku"), // артикул (необязательно)
+    hit: boolean("hit").notNull().default(false),
+    active: boolean("active").notNull().default(true), // показывать в магазине
+    // Остаток в единицах продажи. null — остаток не ведётся (товар всегда в наличии).
+    stock: integer("stock"),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("products_category_idx").on(t.categoryId),
+    uniqueIndex("products_sku_idx").on(t.sku),
+  ]
+);
+
+// Фото товара (сами файлы — в S3, здесь только ключ объекта).
+export const productImages = pgTable(
+  "product_images",
+  {
+    id: serial("id").primaryKey(),
+    productId: text("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    key: text("key").notNull(), // путь в бакете: products/<uuid>.webp
+    sortOrder: integer("sort_order").notNull().default(0), // 0 — главное фото
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [index("product_images_product_idx").on(t.productId)]
+);
+
+// Журнал движения остатков: каждое изменение склада — отдельная строка.
+export const stockMovements = pgTable(
+  "stock_movements",
+  {
+    id: serial("id").primaryKey(),
+    productId: text("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    delta: integer("delta").notNull(), // +приход / −расход
+    balanceAfter: integer("balance_after").notNull(), // остаток после операции
+    // Приход / Продажа / Списание / Корректировка / Возврат
+    reason: text("reason").notNull(),
+    orderId: text("order_id"), // для продаж и возвратов
+    comment: text("comment").notNull().default(""),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("stock_movements_product_idx").on(t.productId),
+    index("stock_movements_created_idx").on(t.createdAt),
+  ]
+);
+
+// ---------------------------------------------------------------------------
+// Заказы, клиенты, служебное
+// ---------------------------------------------------------------------------
 
 // Заказ покупателя.
 export const orders = pgTable(
@@ -37,7 +132,7 @@ export const orders = pgTable(
     deliveryFee: integer("delivery_fee").notNull(),
     total: integer("total").notNull(),
 
-    status: text("status").notNull().default("Принят"), // Принят / Собираем / В пути / Доставлен
+    status: text("status").notNull().default("Принят"), // Принят / Собираем / В пути / Доставлен / Отменён
   },
   (t) => [index("orders_created_at_idx").on(t.createdAt)]
 );
@@ -85,6 +180,10 @@ export const orderItems = pgTable(
     orderId: text("order_id")
       .notNull()
       .references(() => orders.id, { onDelete: "cascade" }),
+    // Ссылка на товар каталога (null, если товар потом удалили).
+    productId: text("product_id").references(() => products.id, {
+      onDelete: "set null",
+    }),
     title: text("title").notNull(),
     unit: text("unit").notNull(),
     price: integer("price").notNull(),

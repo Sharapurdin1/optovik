@@ -8,8 +8,9 @@ const REQUIRED = ["DATABASE_URL"] as const;
 const REQUIRED_IN_PRODUCTION = ["SESSION_SECRET", "ADMIN_PASSWORD", "APP_URL"] as const;
 
 const OPTIONAL: Record<string, string> = {
-  TELEGRAM_BOT_TOKEN: "заказы не будут приниматься без Telegram",
-  TELEGRAM_CHAT_ID: "заказы не будут приниматься без Telegram",
+  TELEGRAM_BOT_TOKEN: "уведомлений о новых заказах в Telegram не будет",
+  TELEGRAM_CHAT_ID: "уведомлений о новых заказах в Telegram не будет",
+  S3_BUCKET: "загрузка фото товаров отключена",
   SMS_AERO_EMAIL: "вход по СМС в демо-режиме (код на экране)",
   SMS_AERO_API_KEY: "вход по СМС в демо-режиме (код на экране)",
   OWNER_PHONES: "вход владельца по телефону отключён",

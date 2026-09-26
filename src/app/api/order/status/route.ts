@@ -7,6 +7,7 @@ import {
   updateOrderStatus,
 } from "@/lib/orders-server";
 import { isAdmin } from "@/lib/admin-auth";
+import { InsufficientStockError } from "@/lib/stock";
 
 // GET /api/order/status?ids=a,b,c — актуальные статусы заказов (для клиента).
 export async function GET(req: Request) {
@@ -48,6 +49,12 @@ export async function POST(req: Request) {
     await updateOrderStatus(id, body.status);
     return Response.json({ ok: true });
   } catch (e) {
+    if (e instanceof InsufficientStockError) {
+      return Response.json(
+        { ok: false, error: `Не хватает товара: ${e.message}` },
+        { status: 409 }
+      );
+    }
     console.error("Не удалось сменить статус заказа:", e);
     return Response.json({ ok: false, error: "Ошибка базы данных" }, { status: 500 });
   }

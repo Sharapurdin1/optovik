@@ -66,19 +66,11 @@ export function CheckoutModal({
       .filter(Boolean)
       .join(", ");
 
-    const order: Order = {
-      id: String(Date.now()),
-      createdAt: new Date().toISOString(),
+    const draft = {
       items: lines.map((l) => ({
         productId: l.product.id,
-        title: l.product.title,
-        unit: l.product.unit,
-        price: l.product.price,
         quantity: l.quantity,
       })),
-      itemsTotal,
-      deliveryFee,
-      total,
       customer: {
         name: name.trim(),
         phone: phone.trim(),
@@ -87,7 +79,6 @@ export function CheckoutModal({
         payment,
         comment: comment.trim(),
       },
-      status: "Принят",
     };
 
     setSending(true);
@@ -95,7 +86,7 @@ export function CheckoutModal({
       const res = await fetch("/api/order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(order),
+        body: JSON.stringify(draft),
       });
       const data = await res.json().catch(() => ({ ok: false }));
 
@@ -104,6 +95,18 @@ export function CheckoutModal({
         setSending(false);
         return;
       }
+
+      // Номер, позиции и суммы — как их сохранил сервер (по ценам каталога).
+      const order: Order = {
+        id: data.id,
+        createdAt: new Date().toISOString(),
+        items: data.items,
+        itemsTotal: data.itemsTotal,
+        deliveryFee: data.deliveryFee,
+        total: data.total,
+        customer: draft.customer,
+        status: "Принят",
+      };
 
       // Успех: сохраняем заказ, чистим корзину, ведём в «Мои заказы».
       addOrder(order);

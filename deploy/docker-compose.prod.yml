@@ -19,8 +19,9 @@ services:
       - "443:443"
       - "443:443/udp"
     environment:
-      # Пока домена нет — сайт открывается по IP на :80.
-      SITE_ADDRESS: ${SITE_ADDRESS:-:80}
+      # Домен сайта (из /opt/optovik/.env). Для него Caddy сам выпускает HTTPS.
+      DOMAIN: ${DOMAIN:?в .env на сервере не задан DOMAIN}
+      REDIRECT_HOSTS: ${REDIRECT_HOSTS:?в .env на сервере не задан REDIRECT_HOSTS}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data

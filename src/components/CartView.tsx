@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useCart } from "@/lib/cart";
 import { formatPrice } from "@/lib/products";
 import { calcDeliveryFee, isOpenNow } from "@/lib/settings";
@@ -49,14 +50,25 @@ export function CartView() {
             key={product.id}
             className="flex items-center gap-3 bg-white rounded-2xl border border-neutral-200 p-3"
           >
-            <div className="text-3xl w-12 h-12 flex items-center justify-center rounded-lg bg-neutral-100 shrink-0">
-              {product.emoji}
+            <div className="relative text-3xl w-12 h-12 flex items-center justify-center rounded-lg bg-neutral-100 shrink-0 overflow-hidden">
+              {product.images[0] ? (
+                <Image src={product.images[0]} alt="" fill sizes="48px" className="object-cover" />
+              ) : (
+                product.emoji
+              )}
             </div>
             <div className="flex-1 min-w-0">
               <div className="font-medium truncate">{product.title}</div>
               <div className="text-sm text-neutral-500">
                 {formatPrice(product.price)} · {product.unit}
               </div>
+              {product.stock !== null && quantity > product.stock && (
+                <div className="text-xs text-red-500">
+                  {product.stock === 0
+                    ? "Закончился — уберите из корзины"
+                    : `В наличии только ${product.stock}`}
+                </div>
+              )}
             </div>
             <div className="flex items-center gap-2 rounded-lg border border-neutral-200">
               <button
@@ -69,7 +81,8 @@ export function CartView() {
               <span className="tabular-nums w-5 text-center">{quantity}</span>
               <button
                 onClick={() => add(product.id)}
-                className="px-3 py-1 text-lg leading-none"
+                disabled={product.stock !== null && quantity >= product.stock}
+                className="px-3 py-1 text-lg leading-none disabled:opacity-30"
                 aria-label="Добавить один"
               >
                 +

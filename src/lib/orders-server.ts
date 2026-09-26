@@ -4,7 +4,8 @@
 import "server-only";
 import { desc, eq, inArray } from "drizzle-orm";
 import { db, schema } from "@/db";
-import type { OrderStatus } from "./order-status";
+import { CANCELLED, type OrderStatus } from "./order-status";
+import { changeStock } from "./stock";
 
 export { ORDER_STATUSES, isOrderStatus, type OrderStatus } from "./order-status";
 
@@ -17,11 +18,20 @@ export type AdminOrder = Omit<typeof schema.orders.$inferSelect, "createdAt"> & 
 
 // Все заказы (новые сверху) вместе с их позициями.
 export async function getAllOrders(): Promise<AdminOrder[]> {
-  const orders = await db
-    .select()
-    .from(schema.orders)
-    .orderBy(desc(schema.orders.createdAt));
+  return withItems(
+    await db.select().from(schema.orders).orderBy(desc(schema.orders.createdAt))
+  );
+}
 
+// Один заказ (для страницы /manage/orders/:id).
+export async function getOrder(id: string): Promise<AdminOrder | null> {
+  const rows = await db.select().from(schema.orders).where(eq(schema.orders.id, id));
+  return (await withItems(rows))[0] ?? null;
+}
+
+async function withItems(
+  orders: (typeof schema.orders.$inferSelect)[]
+): Promise<AdminOrder[]> {
   if (orders.length === 0) return [];
 
   const ids = orders.map((o) => o.id);
@@ -59,13 +69,39 @@ export async function getOrderStatuses(
   return out;
 }
 
-// Сменить статус заказа.
+// Сменить статус заказа. Отмена возвращает товары на склад, а «воскрешение»
+// отменённого заказа списывает их снова (если товара уже не хватает —
+// InsufficientStockError, статус не меняется).
 export async function updateOrderStatus(
   id: string,
   status: OrderStatus
 ): Promise<void> {
-  await db
-    .update(schema.orders)
-    .set({ status })
-    .where(eq(schema.orders.id, id));
+  await db.transaction(async (tx) => {
+    const [order] = await tx
+      .select({ status: schema.orders.status })
+      .from(schema.orders)
+      .where(eq(schema.orders.id, id))
+      .for("update");
+    if (!order) throw new Error("Заказ не найден");
+    if (order.status === status) return;
+
+    const wasCancelled = order.status === CANCELLED;
+    const willCancel = status === CANCELLED;
+    if (wasCancelled !== willCancel) {
+      const items = await tx
+        .select({ productId: schema.orderItems.productId, quantity: schema.orderItems.quantity })
+        .from(schema.orderItems)
+        .where(eq(schema.orderItems.orderId, id));
+      for (const it of items) {
+        if (!it.productId) continue;
+        if (willCancel) {
+          await changeStock(tx, it.productId, it.quantity, "Возврат", { orderId: id });
+        } else {
+          await changeStock(tx, it.productId, -it.quantity, "Продажа", { orderId: id });
+        }
+      }
+    }
+
+    await tx.update(schema.orders).set({ status }).where(eq(schema.orders.id, id));
+  });
 }

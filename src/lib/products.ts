@@ -1,5 +1,8 @@
-// Каталог товаров. Пока данные заданы прямо в коде (моки).
-// Позже заменим на базу данных PostgreSQL.
+// Типы каталога и стартовые данные.
+//
+// Настоящий каталог живёт в базе и ведётся в админке (/manage/products).
+// Списки ниже — только стартовый набор для первого импорта, если
+// Google-таблица не подключена.
 
 export type Category = {
   id: string;
@@ -13,12 +16,23 @@ export type Product = {
   categoryId: string;
   price: number; // цена в рублях
   unit: string; // единица (шт, кг, л ...)
-  emoji: string; // временная «картинка»
+  emoji: string; // запасная «картинка», пока нет фото
+  images: string[]; // адреса фото (первое — главное)
+  description: string;
+  stock: number | null; // остаток; null — не ведётся (всегда в наличии)
   hit?: boolean; // хит продаж — показываем наверху каталога
   oldPrice?: number; // старая цена (для показа скидки)
 };
 
-export const categories: Category[] = [
+// Товар из стартового списка / Google-таблицы (ещё без фото и остатков).
+export type SeedProduct = Omit<Product, "images" | "description" | "stock">;
+
+// Можно ли положить товар в корзину.
+export function inStock(p: Pick<Product, "stock">): boolean {
+  return p.stock === null || p.stock > 0;
+}
+
+export const SEED_CATEGORIES: Category[] = [
   { id: "fruits", title: "Овощи и фрукты", emoji: "🥦" },
   { id: "dairy", title: "Молочное", emoji: "🥛" },
   { id: "bakery", title: "Хлеб и выпечка", emoji: "🥖" },
@@ -28,7 +42,7 @@ export const categories: Category[] = [
   { id: "snacks", title: "Снеки", emoji: "🍫" },
 ];
 
-export const products: Product[] = [
+export const SEED_PRODUCTS: SeedProduct[] = [
   // Овощи и фрукты
   { id: "banana", title: "Бананы", categoryId: "fruits", price: 79, unit: "кг", emoji: "🍌", hit: true, oldPrice: 129 },
   { id: "apple", title: "Яблоки Голден", categoryId: "fruits", price: 149, unit: "кг", emoji: "🍎", hit: true },
@@ -71,9 +85,6 @@ export const products: Product[] = [
   { id: "cookies", title: "Печенье", categoryId: "snacks", price: 119, unit: "300 г", emoji: "🍪" },
   { id: "nuts", title: "Орехи микс", categoryId: "snacks", price: 199, unit: "200 г", emoji: "🥜" },
 ];
-
-// Хиты продаж — показываем отдельным блоком наверху каталога.
-export const hitProducts: Product[] = products.filter((p) => p.hit);
 
 export function formatPrice(rub: number): string {
   return `${rub.toLocaleString("ru-RU")} ₽`;

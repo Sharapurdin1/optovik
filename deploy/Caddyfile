@@ -1,6 +1,10 @@
-# Caddy — входная дверь сайта: HTTPS (сертификат Let's Encrypt получает
-# сам, когда SITE_ADDRESS — это домен), сжатие, заголовки безопасности.
-{$SITE_ADDRESS::80} {
+# Caddy — входная дверь сайта: HTTPS (сертификат Let's Encrypt получает и
+# продлевает сам), сжатие, заголовки безопасности.
+# Домены задаются в /opt/optovik/.env на сервере:
+#   DOMAIN=optdostavka05.ru                      — основной адрес сайта
+#   REDIRECT_HOSTS="www.optdostavka05.ru ..."    — адреса, которые ведут на основной
+
+{$DOMAIN} {
 	encode zstd gzip
 
 	request_body {
@@ -8,6 +12,7 @@
 	}
 
 	header {
+		Strict-Transport-Security "max-age=31536000"
 		X-Content-Type-Options nosniff
 		X-Frame-Options DENY
 		Referrer-Policy strict-origin-when-cross-origin
@@ -15,4 +20,9 @@
 	}
 
 	reverse_proxy app:3000
+}
+
+# Остальные адреса (www, другие домены) → основной домен
+{$REDIRECT_HOSTS} {
+	redir https://{$DOMAIN}{uri} permanent
 }
