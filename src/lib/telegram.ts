@@ -1,7 +1,10 @@
-// Уведомления владельцу в Telegram.
+// Уведомления владельцу в Telegram о новых заказах.
 //
-// Telegram — только «звонок»: пришёл новый заказ. Полный состав заказа,
-// телефон и адрес — в админке по ссылке из сообщения.
+// Сообщение содержит весь заказ (товары, суммы, покупатель, адрес, оплата)
+// и кнопку «Открыть заказ в админке» — там меняется статус.
+// Серверы Telegram за рубежом: это трансграничная передача персональных
+// данных (152-ФЗ) — она должна быть указана в политике и уведомлении в РКН.
+//
 // Настройки: TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, APP_URL (адрес сайта).
 // TELEGRAM_API_URL — необязательный адрес прокси к Bot API (если из России
 // перестанет открываться api.telegram.org).
@@ -45,15 +48,44 @@ export function adminOrderUrl(id: string): string {
   return `${base}/manage/orders/${encodeURIComponent(id)}`;
 }
 
-// Короткое сообщение: сумма, сколько позиций, район доставки.
+const MAX_MESSAGE = 3800; // лимит Telegram — 4096 символов, берём с запасом
+
+// Полное сообщение о заказе. Экранируем всё, что ввёл покупатель (HTML).
 export function buildOrderMessage(order: TrustedOrder): string {
-  const count = order.items.reduce((s, i) => s + i.quantity, 0);
-  const where = order.customer.street?.trim() || order.customer.address.trim();
-  return [
-    `🛒 <b>Новый заказ №${escapeHtml(order.id)}</b>`,
-    `💰 ${formatRub(order.total)} · ${count} шт. · ${escapeHtml(order.customer.payment)}`,
-    `📍 ${escapeHtml(where)}`,
-  ].join("\n");
+  const c = order.customer;
+  const head = [`🛒 <b>Новый заказ №${escapeHtml(order.id)}</b>`, ""];
+  const tail = [
+    "",
+    `Товары: ${formatRub(order.itemsTotal)}`,
+    `Доставка: ${order.deliveryFee === 0 ? "бесплатно" : formatRub(order.deliveryFee)}`,
+    `<b>Итого: ${formatRub(order.total)}</b>`,
+    "",
+    `👤 ${escapeHtml(c.name)}`,
+    `📞 ${escapeHtml(c.phone)}`,
+    `📍 ${escapeHtml(c.address)}`,
+    `💳 ${escapeHtml(c.payment)}`,
+  ];
+  if (c.comment?.trim()) tail.push(`💬 ${escapeHtml(c.comment.trim())}`);
+
+  const lines = order.items.map(
+    (it) =>
+      `• ${escapeHtml(it.title)} (${escapeHtml(it.unit)}) — ${it.quantity} × ${formatRub(it.price)} = <b>${formatRub(it.price * it.quantity)}</b>`
+  );
+
+  // Очень большой заказ: показываем начало списка, остальное — в админке.
+  const fixed = head.join("\n").length + tail.join("\n").length + 60;
+  const shown: string[] = [];
+  let used = fixed;
+  for (const line of lines) {
+    if (used + line.length + 1 > MAX_MESSAGE) break;
+    shown.push(line);
+    used += line.length + 1;
+  }
+  if (shown.length < lines.length) {
+    shown.push(`…и ещё ${lines.length - shown.length} поз. — полный список в админке`);
+  }
+
+  return [...head, ...shown, ...tail].join("\n");
 }
 
 // Отправить уведомление. Никогда не бросает ошибку: заказ уже сохранён.
