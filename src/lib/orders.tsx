@@ -5,14 +5,8 @@
 // видел свои прошлые заказы в разделе «Мои заказы».
 // Сам факт заказа уходит владельцу в Telegram (см. /api/order).
 
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, useContext, useMemo, type ReactNode } from "react";
+import { createLocalStore, useLocalStore } from "./local-store";
 
 export type OrderItem = {
   productId?: string; // id товара из каталога — для пересчёта цены на сервере
@@ -49,35 +43,16 @@ type OrdersContextValue = {
 
 const OrdersContext = createContext<OrdersContextValue | null>(null);
 
-const STORAGE_KEY = "optovik-orders";
+const ordersStore = createLocalStore<Order[]>("optovik-orders", []);
 
 export function OrdersProvider({ children }: { children: ReactNode }) {
-  const [orders, setOrders] = useState<Order[]>([]);
-
-  // Загружаем сохранённые заказы при первом запуске в браузере.
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setOrders(JSON.parse(raw));
-    } catch {
-      // повреждённые данные — игнорируем
-    }
-  }, []);
-
-  // Сохраняем при каждом изменении.
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(orders));
-    } catch {
-      // приватный режим и т.п. — не критично
-    }
-  }, [orders]);
+  const orders = useLocalStore(ordersStore);
 
   const value = useMemo<OrdersContextValue>(
     () => ({
       orders,
       // Новый заказ показываем сверху.
-      addOrder: (order: Order) => setOrders((prev) => [order, ...prev]),
+      addOrder: (order: Order) => ordersStore.set((prev) => [order, ...prev]),
     }),
     [orders]
   );

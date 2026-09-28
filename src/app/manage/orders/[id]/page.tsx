@@ -10,5 +10,5 @@ export default async function OrderPage({ params }: PageProps<"/manage/orders/[i
   const { id } = await params;
   const order = await getOrder(id);
   if (!order) notFound();
-  return <ManageOrders initialOrders={[order]} single />;
+  return <ManageOrders orders={[order]} single />;
 }

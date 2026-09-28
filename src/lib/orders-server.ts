@@ -16,10 +16,17 @@ export type AdminOrder = Omit<typeof schema.orders.$inferSelect, "createdAt"> & 
   items: AdminOrderItem[];
 };
 
-// Все заказы (новые сверху) вместе с их позициями.
+// Последние заказы (новые сверху) вместе с их позициями.
+// Ограничение — чтобы панель не тормозила, когда заказов станут тысячи.
+const ORDERS_LIMIT = 500;
+
 export async function getAllOrders(): Promise<AdminOrder[]> {
   return withItems(
-    await db.select().from(schema.orders).orderBy(desc(schema.orders.createdAt))
+    await db
+      .select()
+      .from(schema.orders)
+      .orderBy(desc(schema.orders.createdAt))
+      .limit(ORDERS_LIMIT)
   );
 }
 

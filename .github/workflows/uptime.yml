@@ -1,0 +1,37 @@
+# Мониторинг доступности: каждые ~5 минут GitHub проверяет /api/health.
+# Если сайт не отвечает (3 попытки подряд) — сообщение владельцу в Telegram.
+# Пока сайт лежит, напоминание приходит при каждой проверке.
+name: Uptime
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Проверить сайт
+        id: health
+        run: |
+          for i in 1 2 3; do
+            if curl -fsS -m 10 https://optdostavka05.ru/api/health > /dev/null; then
+              echo "✅ Сайт работает"; exit 0
+            fi
+            sleep 10
+          done
+          echo "down=true" >> "$GITHUB_OUTPUT"
+          exit 1
+
+      - name: Тревога в Telegram
+        if: failure() && steps.health.outputs.down == 'true'
+        env:
+          TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CHAT: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          curl -fsS -m 15 "https://api.telegram.org/bot${TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${CHAT}" \
+            --data-urlencode "text=🔴 Сайт optdostavka05.ru не отвечает (3 попытки за 30 секунд). Проверка повторится через ~5 минут." \
+            > /dev/null

@@ -14,6 +14,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { createLocalStore, useLocalStore } from "./local-store";
 
 // Функции телефона живут в нейтральном модуле; ре-экспортим для совместимости.
 export { normalizePhone, formatPhone, formatPhoneInput } from "./phone";
@@ -58,7 +59,10 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-const STORAGE_KEY = "optovik-user";
+// Кэш вошедшего пользователя в браузере — чтобы шапка сразу показывала имя.
+// Истина — серверная сессия (сверяемся с /api/auth/me).
+const userStore = createLocalStore<User | null>("optovik-user", null);
+const setUser = userStore.set;
 
 export function AuthProvider({
   loginEnabled,
@@ -67,33 +71,19 @@ export function AuthProvider({
   loginEnabled: boolean;
   children: ReactNode;
 }) {
-  const [user, setUser] = useState<User | null>(null);
+  const user = useLocalStore(userStore);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Восстанавливаем вход при заходе.
+  // Сверяемся с сервером — истина в серверной сессии.
   useEffect(() => {
-    // 1) быстрый показ из localStorage (кэш);
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setUser(JSON.parse(raw));
-    } catch {
-      // игнорируем повреждённые данные
-    }
-    // 2) сверяемся с сервером — истина в серверной сессии.
     fetch("/api/auth/me")
       .then((r) => r.json())
       .then((data: { user: User | null }) => {
         if (data.user) {
           setUser(data.user);
-          try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(data.user));
-          } catch {}
         } else {
           // Сервер: действующей сессии нет → выходим.
           setUser(null);
-          try {
-            localStorage.removeItem(STORAGE_KEY);
-          } catch {}
         }
       })
       .catch(() => {
@@ -110,9 +100,6 @@ export function AuthProvider({
       closeLogin: () => setIsModalOpen(false),
       logout: () => {
         setUser(null);
-        try {
-          localStorage.removeItem(STORAGE_KEY);
-        } catch {}
         // Закрываем серверную сессию (и сессию панели владельца).
         fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
       },
@@ -144,9 +131,6 @@ export function AuthProvider({
               isOwner: data.isOwner ?? false,
             };
             setUser(nextUser);
-            try {
-              localStorage.setItem(STORAGE_KEY, JSON.stringify(nextUser));
-            } catch {}
           }
           return data;
         } catch {
@@ -166,9 +150,6 @@ export function AuthProvider({
           if (data.ok) {
             const nextUser: User = { phone, name, isOwner: user?.isOwner };
             setUser(nextUser);
-            try {
-              localStorage.setItem(STORAGE_KEY, JSON.stringify(nextUser));
-            } catch {}
           }
           return data;
         } catch {

@@ -7,13 +7,13 @@
 import {
   createContext,
   useContext,
-  useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from "react";
 import { type Product } from "./products";
 import { useCatalog } from "./catalog-context";
+import { createLocalStore, useLocalStore } from "./local-store";
 
 export type CartLine = {
   product: Product;
@@ -35,34 +35,16 @@ type CartContextValue = {
 
 const CartContext = createContext<CartContextValue | null>(null);
 
-const STORAGE_KEY = "optovik-cart";
-
 // В localStorage храним только { productId: количество }.
 type StoredCart = Record<string, number>;
 
+const cartStore = createLocalStore<StoredCart>("optovik-cart", {});
+const setCounts = cartStore.set;
+
 export function CartProvider({ children }: { children: ReactNode }) {
   const { productById } = useCatalog();
-  const [counts, setCounts] = useState<StoredCart>({});
+  const counts = useLocalStore(cartStore);
   const [isOpen, setIsOpen] = useState(false);
-
-  // Загружаем сохранённую корзину при первом запуске в браузере.
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setCounts(JSON.parse(raw));
-    } catch {
-      // повреждённые данные — просто игнорируем
-    }
-  }, []);
-
-  // Сохраняем при каждом изменении.
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(counts));
-    } catch {
-      // приватный режим и т.п. — не критично
-    }
-  }, [counts]);
 
   const value = useMemo<CartContextValue>(() => {
     const lines: CartLine[] = Object.entries(counts)

@@ -88,22 +88,18 @@ export function buildOrderMessage(order: TrustedOrder): string {
   return [...head, ...shown, ...tail].join("\n");
 }
 
-// Отправить уведомление. Никогда не бросает ошибку: заказ уже сохранён.
-export async function notifyNewOrder(order: TrustedOrder): Promise<void> {
+// Отправить сообщение владельцу. Никогда не бросает ошибку — возвращает,
+// получилось ли. button — кнопка-ссылка под сообщением (только https).
+export async function sendTelegram(
+  text: string,
+  button?: { text: string; url: string }
+): Promise<boolean> {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const chatId = process.env.TELEGRAM_CHAT_ID;
-  if (!token || !chatId) {
-    console.warn(`Заказ ${order.id} сохранён, но Telegram не настроен — уведомления нет`);
-    return;
-  }
+  if (!token || !chatId) return false;
 
-  const url = adminOrderUrl(order.id);
-  // Кнопка-ссылка работает только с публичным https-адресом; иначе — ссылка в тексте.
-  const canButton = url.startsWith("https://");
-  const text = canButton
-    ? buildOrderMessage(order)
-    : `${buildOrderMessage(order)}\n\n🔗 ${escapeHtml(url)}`;
-
+  const withButton = button?.url.startsWith("https://");
+  const body = withButton ? text : button ? `${text}\n\n🔗 ${escapeHtml(button.url)}` : text;
   try {
     const api = (process.env.TELEGRAM_API_URL ?? "https://api.telegram.org").replace(/\/+$/, "");
     const res = await fetch(`${api}/bot${token}/sendMessage`, {
@@ -111,21 +107,34 @@ export async function notifyNewOrder(order: TrustedOrder): Promise<void> {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         chat_id: chatId,
-        text,
+        text: body,
         parse_mode: "HTML",
         disable_web_page_preview: true,
-        ...(canButton && {
-          reply_markup: {
-            inline_keyboard: [[{ text: "Открыть заказ в админке", url }]],
-          },
+        ...(withButton && {
+          reply_markup: { inline_keyboard: [[{ text: button!.text, url: button!.url }]] },
         }),
       }),
       signal: AbortSignal.timeout(8000),
     });
     if (!res.ok) {
-      console.error(`⚠️ Заказ ${order.id} сохранён, но Telegram ответил:`, await res.text());
+      console.error("⚠️ Telegram ответил ошибкой:", await res.text());
+      return false;
     }
+    return true;
   } catch (e) {
-    console.error(`⚠️ Заказ ${order.id} сохранён, но Telegram недоступен:`, e);
+    console.error("⚠️ Telegram недоступен:", e);
+    return false;
   }
 }
+
+// Уведомление о новом заказе. Заказ к этому моменту уже сохранён в базе.
+export async function notifyNewOrder(order: TrustedOrder): Promise<void> {
+  const sent = await sendTelegram(buildOrderMessage(order), {
+    text: "Открыть заказ в админке",
+    url: adminOrderUrl(order.id),
+  });
+  if (!sent) console.warn(`Заказ ${order.id} сохранён, но уведомление в Telegram не ушло`);
+}
+
+// Экранирование для текстов тревог (alerts.ts).
+export { escapeHtml };
