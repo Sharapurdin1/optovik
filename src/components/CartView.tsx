@@ -28,7 +28,9 @@ export function CartView() {
     return (
       <div className="mx-auto max-w-5xl px-4 py-16 flex flex-col items-center text-center text-neutral-500">
         <div className="text-6xl mb-4">🛒</div>
-        <h1 className="text-xl font-bold text-neutral-800 mb-1">Корзина пуста</h1>
+        <h1 className="text-xl font-bold text-neutral-800 mb-1">
+          Корзина пуста
+        </h1>
         <p className="mb-6">Добавьте товары из магазина</p>
         <Link
           href="/shop"
@@ -52,7 +54,13 @@ export function CartView() {
           >
             <div className="relative text-3xl w-12 h-12 flex items-center justify-center rounded-lg bg-neutral-100 shrink-0 overflow-hidden">
               {product.images[0] ? (
-                <Image src={product.images[0]} alt="" fill sizes="48px" className="object-cover" />
+                <Image
+                  src={product.images[0]}
+                  alt=""
+                  fill
+                  sizes="48px"
+                  className="object-cover"
+                />
               ) : (
                 product.emoji
               )}
@@ -120,7 +128,9 @@ export function CartView() {
         </div>
         <div className="flex justify-between text-lg font-bold">
           <span>Итого</span>
-          <span className="tabular-nums text-emerald-600">{formatPrice(grandTotal)}</span>
+          <span className="tabular-nums text-emerald-600">
+            {formatPrice(grandTotal)}
+          </span>
         </div>
         {!open && (
           <div className="text-sm text-amber-700 bg-amber-50 rounded-lg px-3 py-2">
@@ -144,13 +154,16 @@ export function CartView() {
         </button>
       </div>
 
-      <CheckoutModal
-        open={checkoutOpen}
-        onClose={() => setCheckoutOpen(false)}
-        itemsTotal={totalPrice}
-        deliveryFee={deliveryFee}
-        total={grandTotal}
-      />
+      {/* Монтируем только при открытии — так форма каждый раз берёт
+          свежие сохранённые данные покупателя. */}
+      {checkoutOpen && (
+        <CheckoutModal
+          onClose={() => setCheckoutOpen(false)}
+          itemsTotal={totalPrice}
+          deliveryFee={deliveryFee}
+          total={grandTotal}
+        />
+      )}
     </div>
   );
 }

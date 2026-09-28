@@ -163,6 +163,7 @@ export const settings = pgTable("settings", {
   minOrder: integer("min_order").notNull().default(0), // мин. заказ, ₽
   deliveryFee: integer("delivery_fee").notNull().default(200),
   freeDeliveryFrom: integer("free_delivery_from").notNull().default(2000),
+  contactPhone: text("contact_phone").notNull().default(""), // телефон магазина
 });
 
 // Счётчики частоты запросов (антиспам / защита СМС-баланса).

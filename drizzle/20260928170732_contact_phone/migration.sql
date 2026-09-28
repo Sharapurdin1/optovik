@@ -1,0 +1,1 @@
+ALTER TABLE "settings" ADD COLUMN "contact_phone" text DEFAULT '' NOT NULL;

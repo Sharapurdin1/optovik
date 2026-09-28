@@ -24,6 +24,11 @@ export async function POST(req: Request) {
     minOrder: toInt(b.minOrder, 0),
     deliveryFee: toInt(b.deliveryFee, DEFAULT_SETTINGS.deliveryFee),
     freeDeliveryFrom: toInt(b.freeDeliveryFrom, DEFAULT_SETTINGS.freeDeliveryFrom),
+    // Телефон магазина: только цифры, +, пробелы, скобки и дефисы.
+    contactPhone: String(b.contactPhone ?? "")
+      .replace(/[^\d+()\s-]/g, "")
+      .trim()
+      .slice(0, 30),
   };
 
   try {

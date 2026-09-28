@@ -2,46 +2,84 @@
 
 import Link from "next/link";
 import { useAuth, formatPhone } from "@/lib/auth";
-
-const menu = [
-  { icon: "📦", label: "Мои заказы", href: "/orders" },
-  { icon: "💬", label: "Поддержка", href: "#" },
-  { icon: "📄", label: "Условия и соглашения", href: "#" },
-  { icon: "🔒", label: "Политика конфиденциальности", href: "#" },
-  { icon: "ℹ️", label: "О магазине", href: "#" },
-];
+import { useSettings } from "@/lib/settings-context";
+import { contactLinks } from "@/lib/settings";
+import { clearCheckout, useSavedCheckout } from "@/lib/checkout-storage";
 
 export function ProfileView() {
-  const { user, openLogin, logout } = useAuth();
+  const { user, loginEnabled, openLogin, logout } = useAuth();
+  const { contactPhone } = useSettings();
+  const contact = contactLinks(contactPhone);
+  const saved = useSavedCheckout();
+
+  const savedAddress = saved
+    ? [
+        saved.street,
+        saved.apartment && `кв. ${saved.apartment}`,
+        saved.entrance && `подъезд ${saved.entrance}`,
+        saved.floor && `этаж ${saved.floor}`,
+      ]
+        .filter(Boolean)
+        .join(", ")
+    : "";
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-4">
       <h1 className="text-2xl font-bold mb-4">Профиль</h1>
 
-      {/* Карточка пользователя */}
-      <div className="bg-white rounded-2xl border border-neutral-200 p-4 mb-4 flex items-center gap-4">
-        <div className="w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center text-2xl">
-          👤
+      {/* Аккаунт — только если вход по телефону работает */}
+      {loginEnabled && (
+        <div className="bg-white rounded-2xl border border-neutral-200 p-4 mb-4 flex items-center gap-4">
+          <div className="w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center text-2xl">
+            👤
+          </div>
+          {user ? (
+            <div className="flex-1">
+              <div className="font-semibold">{user.name?.trim() || formatPhone(user.phone)}</div>
+              <div className="text-sm text-neutral-500">
+                {user.name?.trim() ? formatPhone(user.phone) : "Вы вошли в аккаунт"}
+              </div>
+            </div>
+          ) : (
+            <div className="flex-1">
+              <div className="font-semibold">Вы не вошли</div>
+              <button
+                onClick={openLogin}
+                className="text-sm text-emerald-600 font-medium hover:underline"
+              >
+                Войти или зарегистрироваться
+              </button>
+            </div>
+          )}
         </div>
-        {user ? (
-          <div className="flex-1">
-            <div className="font-semibold">
-              {user.name?.trim() || formatPhone(user.phone)}
-            </div>
-            <div className="text-sm text-neutral-500">
-              {user.name?.trim() ? formatPhone(user.phone) : "Вы вошли в аккаунт"}
-            </div>
+      )}
+
+      {/* Данные для доставки, запомненные после прошлого заказа */}
+      <div className="bg-white rounded-2xl border border-neutral-200 p-4 mb-4">
+        <div className="flex items-center justify-between mb-1">
+          <h2 className="font-semibold">Данные для доставки</h2>
+          {saved && (
+            <button
+              onClick={clearCheckout}
+              className="text-xs text-neutral-400 hover:text-red-500"
+            >
+              забыть
+            </button>
+          )}
+        </div>
+        {saved ? (
+          <div className="text-sm text-neutral-600 space-y-0.5">
+            <div>👤 {saved.name}</div>
+            <div>📞 {saved.phone}</div>
+            {savedAddress && <div>📍 {savedAddress}</div>}
+            <p className="text-xs text-neutral-400 pt-1">
+              Подставятся в следующий заказ — там же их можно изменить.
+            </p>
           </div>
         ) : (
-          <div className="flex-1">
-            <div className="font-semibold">Вы не вошли</div>
-            <button
-              onClick={openLogin}
-              className="text-sm text-emerald-600 font-medium hover:underline"
-            >
-              Войти или зарегистрироваться
-            </button>
-          </div>
+          <p className="text-sm text-neutral-500">
+            После первого заказа имя, телефон и адрес запомнятся на этом устройстве.
+          </p>
         )}
       </div>
 
@@ -59,17 +97,36 @@ export function ProfileView() {
 
       {/* Меню разделов */}
       <div className="bg-white rounded-2xl border border-neutral-200 divide-y divide-neutral-100 overflow-hidden">
-        {menu.map((item) => (
-          <a
-            key={item.label}
-            href={item.href}
-            className="flex items-center gap-3 px-4 py-3.5 hover:bg-neutral-50 transition-colors"
-          >
-            <span className="text-xl">{item.icon}</span>
-            <span className="flex-1 font-medium">{item.label}</span>
-            <span className="text-neutral-400">›</span>
-          </a>
-        ))}
+        <Link
+          href="/orders"
+          className="flex items-center gap-3 px-4 py-3.5 hover:bg-neutral-50 transition-colors"
+        >
+          <span className="text-xl">📦</span>
+          <span className="flex-1 font-medium">Мои заказы</span>
+          <span className="text-neutral-400">›</span>
+        </Link>
+        {contact && (
+          <>
+            <a
+              href={contact.tel}
+              className="flex items-center gap-3 px-4 py-3.5 hover:bg-neutral-50 transition-colors"
+            >
+              <span className="text-xl">📞</span>
+              <span className="flex-1 font-medium">Позвонить в магазин</span>
+              <span className="text-sm text-neutral-400">{contactPhone}</span>
+            </a>
+            <a
+              href={contact.whatsapp}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 px-4 py-3.5 hover:bg-neutral-50 transition-colors"
+            >
+              <span className="text-xl">💬</span>
+              <span className="flex-1 font-medium">Написать в WhatsApp</span>
+              <span className="text-neutral-400">›</span>
+            </a>
+          </>
+        )}
       </div>
 
       {user && (

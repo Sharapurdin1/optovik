@@ -4,6 +4,7 @@
 // Товары без категории попадают в «Другое».
 
 import "server-only";
+import { cache } from "react";
 import { asc, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { publicUrl } from "./s3";
@@ -18,7 +19,9 @@ export type CatalogData = {
 // Категория для товаров без категории.
 export const OTHER_CATEGORY: Category = { id: "other", title: "Другое", emoji: "📦" };
 
-export async function getCatalog(): Promise<CatalogData> {
+// cache(): в пределах одного запроса каталог читается из базы один раз,
+// даже если он нужен и заголовку страницы, и самой странице, и шапке сайта.
+export const getCatalog = cache(async (): Promise<CatalogData> => {
   try {
     const [cats, rows, images] = await Promise.all([
       db
@@ -82,4 +85,4 @@ export async function getCatalog(): Promise<CatalogData> {
     console.error("Каталог не загрузился:", e);
     return { products: [], categories: [], hitProducts: [] };
   }
-}
+});

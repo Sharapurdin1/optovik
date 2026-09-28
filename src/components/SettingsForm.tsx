@@ -125,6 +125,22 @@ export function SettingsForm({ initial }: { initial: Settings }) {
           "Если сумма товаров больше — доставка бесплатно."
         )}
 
+        <div>
+          <label className="block text-sm font-medium text-neutral-700 mb-1">
+            Телефон магазина
+          </label>
+          <input
+            type="tel"
+            value={s.contactPhone}
+            onChange={(e) => set("contactPhone", e.target.value)}
+            placeholder="+7 999 123-45-67"
+            className="w-full rounded-xl border border-neutral-300 px-4 py-2.5 outline-none focus:border-emerald-500 transition-colors"
+          />
+          <p className="text-xs text-neutral-400 mt-1">
+            Покупатели увидят кнопки «Позвонить» и «WhatsApp». Пусто — не показывать.
+          </p>
+        </div>
+
         {error && <p className="text-sm text-red-500">{error}</p>}
         {saved && <p className="text-sm text-emerald-600">Сохранено ✓</p>}
 

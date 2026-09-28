@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import { connection } from "next/server";
 import "./globals.css";
@@ -9,6 +9,8 @@ import { CatalogProvider } from "@/lib/catalog-context";
 import { getCatalog } from "@/lib/catalog";
 import { SettingsProvider } from "@/lib/settings-context";
 import { getSettings } from "@/lib/settings-server";
+import { loginEnabled } from "@/lib/auth-server";
+import { siteUrl } from "@/lib/site";
 import { Header } from "@/components/Header";
 import { BottomNav } from "@/components/BottomNav";
 import { AuthModal } from "@/components/AuthModal";
@@ -18,9 +20,33 @@ const geistSans = Geist({
   subsets: ["latin", "cyrillic"],
 });
 
-export const metadata: Metadata = {
-  title: "Оптовик — доставка продуктов на дом",
-  description: "Быстрая доставка продуктов на дом в Махачкале",
+const DESCRIPTION =
+  "Доставка продуктов на дом в Махачкале: овощи и фрукты, молочное, мясо, хлеб, напитки. Заказ онлайн, оплата курьеру.";
+
+// Метаданные собираются во время запроса: адрес сайта (APP_URL) известен
+// только на сервере, а не при сборке образа.
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    metadataBase: new URL(siteUrl()),
+    title: {
+      default: "Оптовик — доставка продуктов на дом в Махачкале",
+      template: "%s · Оптовик",
+    },
+    description: DESCRIPTION,
+    applicationName: "Оптовик",
+    openGraph: {
+      type: "website",
+      locale: "ru_RU",
+      siteName: "Оптовик",
+      title: "Оптовик — доставка продуктов на дом",
+      description: DESCRIPTION,
+    },
+    formatDetection: { telephone: false },
+  };
+}
+
+export const viewport: Viewport = {
+  themeColor: "#10b981",
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
@@ -36,7 +62,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="ru" className={`${geistSans.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-neutral-200">
-        <AuthProvider>
+        <AuthProvider loginEnabled={loginEnabled()}>
           <SettingsProvider value={settings}>
           <CatalogProvider products={products} categories={categories}>
             <OrdersProvider>

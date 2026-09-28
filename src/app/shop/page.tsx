@@ -1,4 +1,7 @@
+import type { Metadata } from "next";
 import { Catalog } from "@/components/Catalog";
+
+export const metadata: Metadata = { title: "Магазин продуктов" };
 
 export default async function ShopPage({
   searchParams,

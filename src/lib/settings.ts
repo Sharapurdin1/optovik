@@ -7,6 +7,7 @@ export type Settings = {
   minOrder: number; // минимальный заказ, ₽ (0 — без минимума)
   deliveryFee: number; // цена доставки, ₽
   freeDeliveryFrom: number; // бесплатная доставка от суммы, ₽
+  contactPhone: string; // телефон магазина для покупателей ("" — не показывать)
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -17,7 +18,16 @@ export const DEFAULT_SETTINGS: Settings = {
   minOrder: 0,
   deliveryFee: 200,
   freeDeliveryFrom: 2000,
+  contactPhone: "",
 };
+
+// Ссылки для связи по номеру магазина: звонок и WhatsApp.
+export function contactLinks(phone: string): { tel: string; whatsapp: string } | null {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length < 10) return null;
+  const intl = digits.length === 10 ? `7${digits}` : digits.replace(/^8/, "7");
+  return { tel: `tel:+${intl}`, whatsapp: `https://wa.me/${intl}` };
+}
 
 // Стоимость доставки по сумме товаров и настройкам.
 export function calcDeliveryFee(itemsTotal: number, s: Settings): number {

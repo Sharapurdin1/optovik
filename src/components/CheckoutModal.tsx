@@ -3,6 +3,7 @@
 // Окно оформления заказа: имя, телефон, адрес, оплата, комментарий.
 // По кнопке «Отправить заказ» данные уходят на сервер (/api/order),
 // оттуда — владельцу в Telegram. Заказ сохраняется в «Мои заказы».
+// Имя, телефон и адрес запоминаются на устройстве для следующих заказов.
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -10,17 +11,16 @@ import { useCart } from "@/lib/cart";
 import { useAuth, formatPhone } from "@/lib/auth";
 import { useOrders, type Order } from "@/lib/orders";
 import { formatPrice } from "@/lib/products";
+import { loadCheckout, saveCheckout } from "@/lib/checkout-storage";
 
 type PaymentMethod = "Наличными курьеру" | "Картой курьеру";
 
 export function CheckoutModal({
-  open,
   onClose,
   itemsTotal,
   deliveryFee,
   total,
 }: {
-  open: boolean;
   onClose: () => void;
   itemsTotal: number;
   deliveryFee: number;
@@ -31,21 +31,25 @@ export function CheckoutModal({
   const { user } = useAuth();
   const { addOrder } = useOrders();
 
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState(user ? formatPhone(user.phone) : "+7 ");
+  // Окно монтируется при открытии — сохранённые данные читаем сразу.
+  const [saved] = useState(loadCheckout);
+  const [name, setName] = useState(saved?.name ?? user?.name ?? "");
+  const [phone, setPhone] = useState(
+    saved?.phone ?? (user ? formatPhone(user.phone) : "+7 ")
+  );
   // Адрес разбит на отдельные поля — так курьеру понятнее.
-  const [street, setStreet] = useState(""); // улица и номер дома
-  const [apartment, setApartment] = useState("");
-  const [entrance, setEntrance] = useState(""); // подъезд
-  const [floor, setFloor] = useState("");
-  const [intercom, setIntercom] = useState(""); // домофон
-  const [payment, setPayment] = useState<PaymentMethod>("Наличными курьеру");
+  const [street, setStreet] = useState(saved?.street ?? ""); // улица и номер дома
+  const [apartment, setApartment] = useState(saved?.apartment ?? "");
+  const [entrance, setEntrance] = useState(saved?.entrance ?? ""); // подъезд
+  const [floor, setFloor] = useState(saved?.floor ?? "");
+  const [intercom, setIntercom] = useState(saved?.intercom ?? ""); // домофон
+  const [payment, setPayment] = useState<PaymentMethod>(
+    saved?.payment === "Картой курьеру" ? "Картой курьеру" : "Наличными курьеру"
+  );
   const [comment, setComment] = useState("");
 
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  if (!open) return null;
 
   async function handleSubmit() {
     setError(null);
@@ -108,7 +112,17 @@ export function CheckoutModal({
         status: "Принят",
       };
 
-      // Успех: сохраняем заказ, чистим корзину, ведём в «Мои заказы».
+      // Успех: запоминаем данные доставки, сохраняем заказ, чистим корзину.
+      saveCheckout({
+        name: name.trim(),
+        phone: phone.trim(),
+        street: street.trim(),
+        apartment: apartment.trim(),
+        entrance: entrance.trim(),
+        floor: floor.trim(),
+        intercom: intercom.trim(),
+        payment,
+      });
       addOrder(order);
       clear();
       onClose();

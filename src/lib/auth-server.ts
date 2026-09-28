@@ -25,6 +25,11 @@ function demoLoginAllowed(): boolean {
   return process.env.NODE_ENV !== "production";
 }
 
+// Работает ли вход по телефону вообще (чтобы не показывать кнопку «Войти» зря).
+export function loginEnabled(): boolean {
+  return smsConfigured() || demoLoginAllowed();
+}
+
 export async function requestLoginCode(
   phone: string
 ): Promise<RequestCodeResult> {

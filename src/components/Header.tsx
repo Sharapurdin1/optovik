@@ -3,9 +3,12 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useAuth, formatPhone } from "@/lib/auth";
+import { useSettings } from "@/lib/settings-context";
+import { contactLinks } from "@/lib/settings";
 
 export function Header() {
-  const { user, openLogin, logout } = useAuth();
+  const { user, loginEnabled, openLogin, logout } = useAuth();
+  const contact = contactLinks(useSettings().contactPhone);
 
   return (
     <header className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-neutral-200">
@@ -40,7 +43,7 @@ export function Header() {
               {user.name?.trim() || formatPhone(user.phone)}
             </span>
           </button>
-        ) : (
+        ) : loginEnabled ? (
           <button
             onClick={openLogin}
             className="flex items-center gap-1.5 rounded-xl border border-neutral-300 hover:bg-neutral-100 px-4 py-2 font-medium transition-colors"
@@ -48,7 +51,15 @@ export function Header() {
             <span>👤</span>
             <span>Войти</span>
           </button>
-        )}
+        ) : contact ? (
+          <a
+            href={contact.tel}
+            className="flex items-center gap-1.5 rounded-xl border border-neutral-300 hover:bg-neutral-100 px-3 py-2 font-medium transition-colors"
+          >
+            <span>📞</span>
+            <span className="text-sm">Позвонить</span>
+          </a>
+        ) : null}
       </div>
     </header>
   );

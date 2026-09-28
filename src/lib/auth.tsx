@@ -42,6 +42,8 @@ export type VerifyResult = {
 
 type AuthContextValue = {
   user: User | null;
+  /** Работает ли вход по телефону (на проде — только с СМС-сервисом). */
+  loginEnabled: boolean;
   isModalOpen: boolean;
   openLogin: () => void;
   closeLogin: () => void;
@@ -58,7 +60,13 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 const STORAGE_KEY = "optovik-user";
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+export function AuthProvider({
+  loginEnabled,
+  children,
+}: {
+  loginEnabled: boolean;
+  children: ReactNode;
+}) {
   const [user, setUser] = useState<User | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -96,6 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
+      loginEnabled,
       isModalOpen,
       openLogin: () => setIsModalOpen(true),
       closeLogin: () => setIsModalOpen(false),
@@ -167,7 +176,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       },
     }),
-    [user, isModalOpen]
+    [user, isModalOpen, loginEnabled]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -27,6 +27,18 @@ export type Product = {
 // Товар из стартового списка / Google-таблицы (ещё без фото и остатков).
 export type SeedProduct = Omit<Product, "images" | "description" | "stock">;
 
+// Адрес страницы товара (id бывает кириллицей).
+export function productHref(id: string): string {
+  return `/product/${encodeURIComponent(id)}`;
+}
+
+// Скидка в процентах по старой цене (0 — скидки нет).
+export function discountPercent(p: Pick<Product, "price" | "oldPrice">): number {
+  return p.oldPrice && p.oldPrice > p.price
+    ? Math.round((1 - p.price / p.oldPrice) * 100)
+    : 0;
+}
+
 // Можно ли положить товар в корзину.
 export function inStock(p: Pick<Product, "stock">): boolean {
   return p.stock === null || p.stock > 0;
