@@ -9,6 +9,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/lib/cart";
 import { useAuth, formatPhone } from "@/lib/auth";
+import { formatPhoneInput, isCompletePhone } from "@/lib/phone";
+import { PhoneInput } from "./PhoneInput";
 import { useOrders, type Order } from "@/lib/orders";
 import { formatPrice } from "@/lib/products";
 import { loadCheckout, saveCheckout } from "@/lib/checkout-storage";
@@ -34,9 +36,10 @@ export function CheckoutModal({
   // Окно монтируется при открытии — сохранённые данные читаем сразу.
   const [saved] = useState(loadCheckout);
   const [name, setName] = useState(saved?.name ?? user?.name ?? "");
-  const [phone, setPhone] = useState(
-    saved?.phone ?? (user ? formatPhone(user.phone) : "+7 ")
+  const [phone, setPhone] = useState(() =>
+    formatPhoneInput(saved?.phone ?? (user ? formatPhone(user.phone) : ""))
   );
+  const [phoneInvalid, setPhoneInvalid] = useState(false);
   // Адрес разбит на отдельные поля — так курьеру понятнее.
   const [street, setStreet] = useState(saved?.street ?? ""); // улица и номер дома
   const [apartment, setApartment] = useState(saved?.apartment ?? "");
@@ -54,8 +57,13 @@ export function CheckoutModal({
   async function handleSubmit() {
     setError(null);
 
-    if (!name.trim() || !phone.trim() || !street.trim()) {
-      setError("Заполните имя, телефон и адрес (улица и дом)");
+    if (!isCompletePhone(phone)) {
+      setPhoneInvalid(true);
+      setError("Проверьте номер телефона: нужно 10 цифр после +7");
+      return;
+    }
+    if (!name.trim() || !street.trim()) {
+      setError("Заполните имя и адрес (улица и дом)");
       return;
     }
 
@@ -169,13 +177,14 @@ export function CheckoutModal({
             <label className="block text-sm font-medium text-neutral-700 mb-1">
               Телефон
             </label>
-            <input
-              type="tel"
-              inputMode="tel"
+            <PhoneInput
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="+7 (999) 123-45-67"
-              className="w-full rounded-xl border border-neutral-300 px-4 py-2.5 outline-none focus:border-emerald-500 transition-colors"
+              onChange={(v) => {
+                setPhone(v);
+                setPhoneInvalid(false);
+              }}
+              invalid={phoneInvalid}
+              className="w-full rounded-xl border border-neutral-300 px-4 py-2.5 outline-none focus:border-emerald-500 transition-colors tabular-nums"
             />
           </div>
 

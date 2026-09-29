@@ -17,6 +17,7 @@ import { rateLimit, clientIp, tooMany } from "@/lib/rate-limit";
 import { InsufficientStockError, changeStock } from "@/lib/stock";
 import { isUniqueViolation } from "@/lib/catalog-admin";
 import { notifyNewOrder, type TrustedOrder, type TrustedItem } from "@/lib/telegram";
+import { formatPhone, normalizePhone } from "@/lib/phone";
 
 type OrderPayload = {
   items: { productId?: string; quantity?: number }[];
@@ -142,6 +143,15 @@ export async function POST(req: Request) {
       { status: 400 }
     );
   }
+  // Номер — строго +7 и 10 цифр; сохраняем в едином виде +7 999 123 45 67.
+  const phone = normalizePhone(payload.customer.phone);
+  if (!phone) {
+    return Response.json(
+      { ok: false, error: "Проверьте номер телефона: нужно 10 цифр после +7" },
+      { status: 400 }
+    );
+  }
+  payload.customer.phone = formatPhone(phone);
 
   // Настройки магазина: часы работы и минимальный заказ проверяем на сервере.
   const settings = await getSettings();
