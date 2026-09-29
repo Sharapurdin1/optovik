@@ -4,6 +4,10 @@ name: Deploy
 on:
   push:
     branches: [main]
+    # Правки только документации сайт не меняют — не пересобираем.
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
   workflow_dispatch:
 
 concurrency:
