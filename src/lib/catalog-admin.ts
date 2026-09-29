@@ -29,7 +29,7 @@ export const CategoryInput = z.object({
 export const ProductInput = z.object({
   title: text(120).min(1, "Укажите название"),
   categoryId: z.string().nullable(),
-  price: money,
+  price: money.min(1, "Цена должна быть больше 0"),
   oldPrice: money.nullable(),
   unit: text(30).min(1, "Укажите единицу (шт, кг, 1 л…)"),
   emoji: text(16).min(1),

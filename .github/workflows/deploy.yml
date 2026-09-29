@@ -87,5 +87,7 @@ jobs:
           done
           [ "$status" = "healthy" ] || { docker compose -f docker-compose.prod.yml logs --tail 80 app; exit 1; }
 
-          docker image prune -f
+          # Старые версии образа копятся — удаляем неиспользуемые старше 3 дней
+          # (запущенный сейчас образ не трогается).
+          docker image prune -af --filter "until=72h"
           SCRIPT

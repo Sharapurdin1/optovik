@@ -42,7 +42,12 @@ function toForm(p: AdminProduct | null): Form {
   };
 }
 
-const rub = (v: string) => Math.max(0, Math.floor(Number(v.replace(",", ".")) || 0));
+// Число из ввода: «1 490 ₽» → 1490 (пробелы, валюта и прочее отбрасываем;
+// копейки после запятой/точки не берём — цены в целых рублях).
+const rub = (v: string) => {
+  const n = parseInt(v.split(/[.,]/)[0].replace(/\D/g, ""), 10);
+  return Number.isFinite(n) ? n : 0;
+};
 
 export function ProductEditor({
   product,
@@ -65,7 +70,7 @@ export function ProductEditor({
 
   async function save() {
     if (!f.title.trim()) return setMsg({ ok: false, text: "Укажите название" });
-    if (!f.price.trim()) return setMsg({ ok: false, text: "Укажите цену" });
+    if (rub(f.price) <= 0) return setMsg({ ok: false, text: "Укажите цену больше 0" });
     const oldPrice = f.oldPrice.trim() ? rub(f.oldPrice) : null;
     const body = {
       title: f.title,
@@ -414,8 +419,8 @@ function StockSection({ product }: { product: AdminProduct }) {
   }
 
   function apply() {
-    const n = Math.floor(Number(qty));
-    if (!qty.trim() || !Number.isFinite(n) || n < 0) return setError("Укажите количество");
+    const n = rub(qty);
+    if (!/\d/.test(qty)) return setError("Укажите количество");
     submit(action, n);
   }
 

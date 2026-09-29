@@ -44,6 +44,7 @@ type OrdersContextValue = {
 const OrdersContext = createContext<OrdersContextValue | null>(null);
 
 const ordersStore = createLocalStore<Order[]>("optovik-orders", []);
+const KEEP_ORDERS = 50; // в браузере храним последние 50 заказов
 
 export function OrdersProvider({ children }: { children: ReactNode }) {
   const orders = useLocalStore(ordersStore);
@@ -52,7 +53,8 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     () => ({
       orders,
       // Новый заказ показываем сверху.
-      addOrder: (order: Order) => ordersStore.set((prev) => [order, ...prev]),
+      addOrder: (order: Order) =>
+        ordersStore.set((prev) => [order, ...prev].slice(0, KEEP_ORDERS)),
     }),
     [orders]
   );
