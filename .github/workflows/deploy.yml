@@ -86,7 +86,10 @@ jobs:
           cd /opt/optovik
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
           export IMAGE_TAG="${{ github.sha }}"
-          docker compose -f docker-compose.prod.yml pull
+          docker compose -f docker-compose.prod.yml pull app
+          # Caddy обновляем при случае: Docker Hub бывает отвечает 429 (лимит
+          # скачиваний) — это не повод срывать выкат, работаем на текущем образе.
+          docker compose -f docker-compose.prod.yml pull caddy || echo "⚠️ Caddy не обновлён (Docker Hub), остаётся текущий"
           docker compose -f docker-compose.prod.yml up -d --remove-orphans
           docker logout ghcr.io
 
@@ -100,7 +103,15 @@ jobs:
 
           # Caddy сам не замечает новый Caddyfile — перечитываем без остановки.
           # С ошибкой в файле Caddy оставит старые настройки, а деплой упадёт.
-          docker compose -f docker-compose.prod.yml exec -T caddy caddy reload --config /etc/caddy/Caddyfile
+          # Несколько попыток: только что запущенный Caddy может быть ещё не готов.
+          reloaded=""
+          for i in 1 2 3; do
+            if docker compose -f docker-compose.prod.yml exec -T caddy caddy reload --config /etc/caddy/Caddyfile; then
+              reloaded=1; break
+            fi
+            sleep 3
+          done
+          [ -n "$reloaded" ] || exit 1
 
           # Старые версии образа копятся — удаляем неиспользуемые старше 3 дней
           # (запущенный сейчас образ не трогается).
