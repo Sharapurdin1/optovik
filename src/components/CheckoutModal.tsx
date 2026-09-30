@@ -53,17 +53,28 @@ export function CheckoutModal({
 
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Нажали «Отправить» — подсвечиваем незаполненные обязательные поля
+  // (подсветка гаснет, как только поле заполнено).
+  const [checkRequired, setCheckRequired] = useState(false);
+  const nameMissing = checkRequired && !name.trim();
+  const streetMissing = checkRequired && !street.trim();
+  const missing = [
+    { id: "checkout-name", label: "имя", bad: !name.trim() },
+    { id: "checkout-phone", label: "телефон", bad: !isCompletePhone(phone) },
+    { id: "checkout-street", label: "адрес", bad: !street.trim() },
+  ].filter((f) => f.bad);
 
   async function handleSubmit() {
     setError(null);
+    setCheckRequired(true);
 
-    if (!isCompletePhone(phone)) {
-      setPhoneInvalid(true);
-      setError("Проверьте номер телефона: нужно 10 цифр после +7");
-      return;
-    }
-    if (!name.trim() || !street.trim()) {
-      setError("Заполните имя и адрес (улица и дом)");
+    // Обязательные поля: имя, телефон, адрес. Показываем все ошибки сразу
+    // и переводим к первому незаполненному полю.
+    if (missing.length > 0) {
+      if (!isCompletePhone(phone)) setPhoneInvalid(true);
+      const el = document.getElementById(missing[0].id);
+      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+      el?.focus({ preventScroll: true });
       return;
     }
 
@@ -158,28 +169,37 @@ export function CheckoutModal({
 
         <h2 className="text-xl font-bold mb-1">Оформление заказа</h2>
         <p className="text-sm text-neutral-500 mb-4">
-          Курьер привезёт заказ по указанному адресу
+          Курьер привезёт заказ по указанному адресу. Поля со{" "}
+          <span className="text-red-500">*</span> — обязательные.
         </p>
 
         <div className="space-y-3">
           <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1">
-              Имя
+            <label htmlFor="checkout-name" className="block text-sm font-medium text-neutral-700 mb-1">
+              Имя<span className="text-red-500"> *</span>
             </label>
             <input
+              id="checkout-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               maxLength={100}
               placeholder="Как к вам обращаться"
-              className="w-full rounded-xl border border-neutral-300 px-4 py-2.5 outline-none focus:border-emerald-500 transition-colors"
+              autoComplete="name"
+              aria-required
+              aria-invalid={nameMissing}
+              className={`w-full rounded-xl border border-neutral-300 px-4 py-2.5 outline-none focus:border-emerald-500 transition-colors ${
+                nameMissing ? "!border-red-400 bg-red-50/40" : ""
+              }`}
             />
+            {nameMissing && <p className="text-xs text-red-500 mt-1">Укажите, как к вам обращаться</p>}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1">
-              Телефон
+            <label htmlFor="checkout-phone" className="block text-sm font-medium text-neutral-700 mb-1">
+              Телефон<span className="text-red-500"> *</span>
             </label>
             <PhoneInput
+              id="checkout-phone"
               value={phone}
               onChange={(v) => {
                 setPhone(v);
@@ -191,16 +211,25 @@ export function CheckoutModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1">
-              Адрес доставки
+            <label htmlFor="checkout-street" className="block text-sm font-medium text-neutral-700 mb-1">
+              Адрес доставки<span className="text-red-500"> *</span>
             </label>
             <input
+              id="checkout-street"
               value={street}
               onChange={(e) => setStreet(e.target.value)}
               maxLength={200}
               placeholder="Улица и дом, например: Гагарина, 15"
-              className="w-full rounded-xl border border-neutral-300 px-4 py-2.5 outline-none focus:border-emerald-500 transition-colors"
+              autoComplete="street-address"
+              aria-required
+              aria-invalid={streetMissing}
+              className={`w-full rounded-xl border border-neutral-300 px-4 py-2.5 outline-none focus:border-emerald-500 transition-colors ${
+                streetMissing ? "!border-red-400 bg-red-50/40" : ""
+              }`}
             />
+            {streetMissing && (
+              <p className="text-xs text-red-500 mt-1">Укажите улицу и номер дома</p>
+            )}
             <div className="grid grid-cols-3 gap-2 mt-2">
               <input
                 value={apartment}
@@ -290,7 +319,13 @@ export function CheckoutModal({
           </div>
         </div>
 
-        {error && <p className="text-sm text-red-500 mt-3">{error}</p>}
+        {checkRequired && missing.length > 0 ? (
+          <p className="text-sm text-red-500 mt-3">
+            Заполните: {missing.map((m) => m.label).join(", ")}
+          </p>
+        ) : (
+          error && <p className="text-sm text-red-500 mt-3">{error}</p>
+        )}
 
         <button
           onClick={handleSubmit}

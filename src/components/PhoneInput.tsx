@@ -9,11 +9,13 @@ import { useRef, useState } from "react";
 import { formatPhoneInput, isCompletePhone } from "@/lib/phone";
 
 export function PhoneInput({
+  id,
   value,
   onChange,
   invalid = false,
   className = "",
 }: {
+  id?: string;
   value: string;
   onChange: (v: string) => void;
   invalid?: boolean; // форма отправлена с неполным номером
@@ -40,6 +42,7 @@ export function PhoneInput({
     <div>
       <input
         ref={ref}
+        id={id}
         type="tel"
         inputMode="numeric"
         autoComplete="tel"
@@ -57,11 +60,14 @@ export function PhoneInput({
         onBlur={() => setTouched(true)}
         placeholder="+7 999 999 99 99"
         aria-invalid={showError}
+        aria-required
         className={`${className} ${showError ? "!border-red-400 bg-red-50/40" : ""}`}
       />
       {showError ? (
         <p className="text-xs text-red-500 mt-1">
-          Проверьте номер: нужно 10 цифр после +7, например +7 999 123 45 67
+          {hasDigits
+            ? "Проверьте номер: нужно 10 цифр после +7, например +7 999 123 45 67"
+            : "Укажите номер телефона"}
         </p>
       ) : lettersHint ? (
         <p className="text-xs text-amber-600 mt-1">В номере только цифры</p>
