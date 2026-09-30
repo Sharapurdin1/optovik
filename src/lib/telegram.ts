@@ -88,52 +88,79 @@ export function buildOrderMessage(order: TrustedOrder): string {
   return [...head, ...shown, ...tail].join("\n");
 }
 
-// Отправить сообщение владельцу. Никогда не бросает ошибку — возвращает,
-// получилось ли. button — кнопка-ссылка под сообщением (только https).
-export async function sendTelegram(
-  text: string,
-  button?: { text: string; url: string }
-): Promise<boolean> {
-  const token = process.env.TELEGRAM_BOT_TOKEN;
-  const chatId = process.env.TELEGRAM_CHAT_ID;
-  if (!token || !chatId) return false;
+// Паузы между повторами, если Telegram не ответил (из России он доступен
+// только по IPv6, а IPv6 у хостинга бывает нестабилен). В сумме ~3,5 мин.
+const RETRY_DELAYS_MS = [10_000, 30_000, 60_000, 120_000];
 
-  const withButton = button?.url.startsWith("https://");
-  const body = withButton ? text : button ? `${text}\n\n🔗 ${escapeHtml(button.url)}` : text;
+type Attempt = "sent" | "retry" | "failed";
+
+async function sendOnce(payload: object): Promise<Attempt> {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
   try {
     const api = (process.env.TELEGRAM_API_URL ?? "https://api.telegram.org").replace(/\/+$/, "");
     const res = await fetch(`${api}/bot${token}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text: body,
-        parse_mode: "HTML",
-        disable_web_page_preview: true,
-        ...(withButton && {
-          reply_markup: { inline_keyboard: [[{ text: button!.text, url: button!.url }]] },
-        }),
-      }),
+      body: JSON.stringify(payload),
       signal: AbortSignal.timeout(8000),
     });
-    if (!res.ok) {
-      console.error("⚠️ Telegram ответил ошибкой:", await res.text());
-      return false;
+    if (res.ok) return "sent";
+    const why = await res.text();
+    // 429 — «слишком часто», 5xx — сбой у Telegram: стоит повторить.
+    // Остальное (например, ошибка в тексте) повтором не исправить.
+    if (res.status === 429 || res.status >= 500) {
+      console.warn("⚠️ Telegram временно не принял сообщение:", why);
+      return "retry";
     }
-    return true;
+    console.error("⚠️ Telegram ответил ошибкой:", why);
+    return "failed";
   } catch (e) {
-    console.error("⚠️ Telegram недоступен:", e);
-    return false;
+    console.warn("⚠️ Telegram недоступен:", e);
+    return "retry";
+  }
+}
+
+// Отправить сообщение владельцу. Никогда не бросает ошибку — возвращает,
+// получилось ли. button — кнопка-ссылка под сообщением (только https).
+// retry — повторять при сбое связи (для заказов; тревогам не нужно).
+export async function sendTelegram(
+  text: string,
+  button?: { text: string; url: string },
+  { retry = false }: { retry?: boolean } = {}
+): Promise<boolean> {
+  const chatId = process.env.TELEGRAM_CHAT_ID;
+  if (!process.env.TELEGRAM_BOT_TOKEN || !chatId) return false;
+
+  const withButton = button?.url.startsWith("https://");
+  const body = withButton ? text : button ? `${text}\n\n🔗 ${escapeHtml(button.url)}` : text;
+  const payload = {
+    chat_id: chatId,
+    text: body,
+    parse_mode: "HTML",
+    disable_web_page_preview: true,
+    ...(withButton && {
+      reply_markup: { inline_keyboard: [[{ text: button!.text, url: button!.url }]] },
+    }),
+  };
+
+  const delays = retry ? RETRY_DELAYS_MS : [];
+  for (let attempt = 0; ; attempt++) {
+    const result = await sendOnce(payload);
+    if (result === "sent") return true;
+    if (result === "failed" || attempt >= delays.length) return false;
+    await new Promise((r) => setTimeout(r, delays[attempt]));
   }
 }
 
 // Уведомление о новом заказе. Заказ к этому моменту уже сохранён в базе.
+// Вызывается после ответа покупателю — повторы его не задерживают.
 export async function notifyNewOrder(order: TrustedOrder): Promise<void> {
-  const sent = await sendTelegram(buildOrderMessage(order), {
-    text: "Открыть заказ в админке",
-    url: adminOrderUrl(order.id),
-  });
-  if (!sent) console.warn(`Заказ ${order.id} сохранён, но уведомление в Telegram не ушло`);
+  const sent = await sendTelegram(
+    buildOrderMessage(order),
+    { text: "Открыть заказ в админке", url: adminOrderUrl(order.id) },
+    { retry: true }
+  );
+  if (!sent) console.error(`Заказ ${order.id} сохранён, но уведомление в Telegram не ушло`);
 }
 
 // Экранирование для текстов тревог (alerts.ts).

@@ -6,9 +6,12 @@
 //      НЕ используются, подделать сумму нельзя;
 //   3) сохраняем заказ и списываем остатки ОДНОЙ транзакцией: если какого-то
 //      товара не хватает, заказ не создаётся и покупатель видит, чего нет;
-//   4) шлём владельцу короткое уведомление в Telegram со ссылкой на заказ
-//      в админке. Сбой Telegram заказ не ломает — он уже в базе.
+//   4) после ответа покупателю шлём владельцу уведомление в Telegram со
+//      ссылкой на заказ в админке (при сбое связи — с повторами). Сбой
+//      Telegram заказ не ломает — он уже в базе.
 
+import { after } from "next/server";
+import { z } from "zod";
 import { db, schema } from "@/db";
 import { getCatalog } from "@/lib/catalog";
 import { calcDeliveryFee, isOpenNow, type Settings } from "@/lib/settings";
@@ -19,10 +22,47 @@ import { isUniqueViolation } from "@/lib/catalog-admin";
 import { notifyNewOrder, type TrustedOrder, type TrustedItem } from "@/lib/telegram";
 import { formatPhone, normalizePhone } from "@/lib/phone";
 
-type OrderPayload = {
-  items: { productId?: string; quantity?: number }[];
-  customer: TrustedOrder["customer"];
+// Что принимаем от браузера. Длины ограничены: иначе можно залить в базу
+// мегабайты текста, а слишком длинное сообщение Telegram не примет —
+// владелец не узнал бы о заказе.
+const text = (max: number) => z.string().trim().max(max);
+const OrderSchema = z.object({
+  items: z
+    .array(
+      z.object({
+        productId: z.string().max(200),
+        quantity: z.coerce.number().catch(1),
+      })
+    )
+    .min(1)
+    .max(200),
+  customer: z.object({
+    name: text(100).min(1),
+    phone: z.string().max(30),
+    address: text(500).min(1),
+    street: text(300).optional(),
+    payment: z.enum(["Наличными курьеру", "Картой курьеру"]),
+    comment: text(1000).default(""),
+  }),
+});
+type OrderPayload = z.infer<typeof OrderSchema>;
+
+const FIELD_NAMES: Record<string, string> = {
+  name: "Имя",
+  address: "Адрес",
+  street: "Адрес",
+  comment: "Комментарий",
 };
+
+// Понятный текст ошибки для покупателя.
+function payloadError(issues: z.core.$ZodIssue[]): string {
+  const long = issues.find((i) => i.code === "too_big" && i.path[0] === "customer");
+  if (long) return `Слишком длинный текст в поле «${FIELD_NAMES[String(long.path[1])] ?? "заказа"}»`;
+  if (issues.some((i) => i.code === "too_big" && i.path[0] === "items")) {
+    return "Слишком много позиций в одном заказе";
+  }
+  return "Заполните имя, телефон и адрес";
+}
 
 class OrderError extends Error {
   constructor(message: string, public status = 400) {
@@ -122,27 +162,16 @@ async function saveWithFreshId(order: Omit<TrustedOrder, "id">): Promise<Trusted
   }
 }
 
-// Простая проверка, что заказ вообще пригоден к отправке.
-function isValid(order: OrderPayload | null): order is OrderPayload {
-  if (!order || !Array.isArray(order.items) || order.items.length === 0) return false;
-  const c = order.customer;
-  if (!c || typeof c !== "object") return false;
-  const filled = (v: unknown) => typeof v === "string" && v.trim().length > 0;
-  return filled(c.name) && filled(c.phone) && filled(c.address) && typeof c.payment === "string";
-}
-
 export async function POST(req: Request) {
   // Антиспам заказов: не больше 30 с одного устройства в час.
   const lim = await rateLimit(`order:ip:${clientIp(req)}`, 30, 60 * 60 * 1000);
   if (!lim.allowed) return tooMany(lim.retryAfterSec, "заказов");
 
-  const payload = (await req.json().catch(() => null)) as OrderPayload | null;
-  if (!isValid(payload)) {
-    return Response.json(
-      { ok: false, error: "Заполните имя, телефон и адрес" },
-      { status: 400 }
-    );
+  const parsed = OrderSchema.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) {
+    return Response.json({ ok: false, error: payloadError(parsed.error.issues) }, { status: 400 });
   }
+  const payload = parsed.data;
   // Номер — строго +7 и 10 цифр; сохраняем в едином виде +7 999 123 45 67.
   const phone = normalizePhone(payload.customer.phone);
   if (!phone) {
@@ -194,8 +223,9 @@ export async function POST(req: Request) {
     );
   }
 
-  // Уведомление владельцу. Ошибки внутри только логируются.
-  await notifyNewOrder(order);
+  // Уведомление владельцу — уже после ответа покупателю: повторы при сбое
+  // связи не заставляют его ждать. Ошибки внутри только логируются.
+  after(() => notifyNewOrder(order));
 
   // Отдаём то, что реально сохранено: номер, позиции и суммы по ценам каталога.
   return Response.json({

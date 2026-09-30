@@ -2,7 +2,7 @@
 // Счётчик хранится в базе: на каждый «ключ» — не больше N запросов за окно.
 
 import "server-only";
-import { eq } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 
 export type RateResult = { allowed: boolean; retryAfterSec: number };
@@ -17,45 +17,37 @@ export function clientIp(req: Request): string {
 
 // Разрешить не больше `limit` запросов за `windowMs` на ключ `key`.
 // При ошибке базы — пропускаем (чтобы сбой не блокировал вход).
+//
+// Счёт — одним запросом к базе («+1 и сразу узнать итог»): если прочитать
+// счётчик и записать отдельно, пачка одновременных запросов успевает
+// прочитать одно и то же значение и проскочить лимит.
 export async function rateLimit(
   key: string,
   limit: number,
   windowMs: number
 ): Promise<RateResult> {
   const now = Date.now();
+  const t = schema.rateLimits;
+  // Окно истекло — начинаем новое с этого запроса.
+  const expired = sql`${t.windowStart} <= ${now - windowMs}`;
   try {
-    const rows = await db
-      .select()
-      .from(schema.rateLimits)
-      .where(eq(schema.rateLimits.key, key));
-    const rec = rows[0];
+    const [rec] = await db
+      .insert(t)
+      .values({ key, count: 1, windowStart: now })
+      .onConflictDoUpdate({
+        target: t.key,
+        set: {
+          count: sql`case when ${expired} then 1 else ${t.count} + 1 end`,
+          windowStart: sql`case when ${expired} then ${now} else ${t.windowStart} end`,
+        },
+      })
+      .returning({ count: t.count, windowStart: t.windowStart });
 
-    // Нет записи или окно истекло — начинаем новое окно.
-    if (!rec || now - rec.windowStart >= windowMs) {
-      await db
-        .insert(schema.rateLimits)
-        .values({ key, count: 1, windowStart: now })
-        .onConflictDoUpdate({
-          target: schema.rateLimits.key,
-          set: { count: 1, windowStart: now },
-        });
-      return { allowed: true, retryAfterSec: 0 };
-    }
-
-    // Лимит исчерпан.
-    if (rec.count >= limit) {
-      return {
-        allowed: false,
-        retryAfterSec: Math.ceil((rec.windowStart + windowMs - now) / 1000),
-      };
-    }
-
-    // Ещё можно — увеличиваем счётчик.
-    await db
-      .update(schema.rateLimits)
-      .set({ count: rec.count + 1 })
-      .where(eq(schema.rateLimits.key, key));
-    return { allowed: true, retryAfterSec: 0 };
+    if (rec.count <= limit) return { allowed: true, retryAfterSec: 0 };
+    return {
+      allowed: false,
+      retryAfterSec: Math.max(1, Math.ceil((rec.windowStart + windowMs - now) / 1000)),
+    };
   } catch (e) {
     console.error("rate limit: ошибка базы, пропускаю запрос:", e);
     return { allowed: true, retryAfterSec: 0 };

@@ -168,6 +168,7 @@ export function CheckoutModal({
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
+              maxLength={100}
               placeholder="Как к вам обращаться"
               className="w-full rounded-xl border border-neutral-300 px-4 py-2.5 outline-none focus:border-emerald-500 transition-colors"
             />
@@ -195,6 +196,7 @@ export function CheckoutModal({
             <input
               value={street}
               onChange={(e) => setStreet(e.target.value)}
+              maxLength={200}
               placeholder="Улица и дом, например: Гагарина, 15"
               className="w-full rounded-xl border border-neutral-300 px-4 py-2.5 outline-none focus:border-emerald-500 transition-colors"
             />
@@ -202,18 +204,21 @@ export function CheckoutModal({
               <input
                 value={apartment}
                 onChange={(e) => setApartment(e.target.value)}
+                maxLength={20}
                 placeholder="Кв./офис"
                 className="w-full rounded-xl border border-neutral-300 px-3 py-2.5 outline-none focus:border-emerald-500 transition-colors"
               />
               <input
                 value={entrance}
                 onChange={(e) => setEntrance(e.target.value)}
+                maxLength={20}
                 placeholder="Подъезд"
                 className="w-full rounded-xl border border-neutral-300 px-3 py-2.5 outline-none focus:border-emerald-500 transition-colors"
               />
               <input
                 value={floor}
                 onChange={(e) => setFloor(e.target.value)}
+                maxLength={20}
                 placeholder="Этаж"
                 className="w-full rounded-xl border border-neutral-300 px-3 py-2.5 outline-none focus:border-emerald-500 transition-colors"
               />
@@ -221,6 +226,7 @@ export function CheckoutModal({
             <input
               value={intercom}
               onChange={(e) => setIntercom(e.target.value)}
+              maxLength={30}
               placeholder="Домофон (если есть)"
               className="w-full rounded-xl border border-neutral-300 px-4 py-2.5 mt-2 outline-none focus:border-emerald-500 transition-colors"
             />
@@ -257,6 +263,7 @@ export function CheckoutModal({
             <textarea
               value={comment}
               onChange={(e) => setComment(e.target.value)}
+              maxLength={1000}
               placeholder="Например: домофон не работает, позвоните"
               rows={2}
               className="w-full rounded-xl border border-neutral-300 px-4 py-2.5 outline-none focus:border-emerald-500 transition-colors resize-none"

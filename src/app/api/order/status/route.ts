@@ -14,7 +14,8 @@ export async function GET(req: Request) {
   const ids = (new URL(req.url).searchParams.get("ids") ?? "")
     .split(",")
     .map((s) => s.trim())
-    .filter(Boolean);
+    .filter((s) => s && s.length <= 32)
+    .slice(0, 100); // в браузере хранится не больше 50 заказов — с запасом
   try {
     const statuses = await getOrderStatuses(ids);
     return Response.json({ statuses });
