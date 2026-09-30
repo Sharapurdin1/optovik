@@ -77,7 +77,10 @@ jobs:
             caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile
 
       - name: Скопировать конфиги
-        run: scp deploy/docker-compose.prod.yml deploy/Caddyfile deploy@${{ secrets.SSH_HOST }}:/opt/optovik/
+        run: |
+          scp deploy/docker-compose.prod.yml deploy/Caddyfile deploy/backup-db.sh \
+            deploy/optovik-backup.service deploy/optovik-backup.timer \
+            deploy@${{ secrets.SSH_HOST }}:/opt/optovik/
 
       - name: Выкатить новую версию
         run: |
@@ -112,6 +115,12 @@ jobs:
             sleep 3
           done
           [ -n "$reloaded" ] || exit 1
+
+          # Ежедневная копия базы (второй бэкап): скрипт и таймер — из репозитория.
+          chmod 700 backup-db.sh
+          sudo -n install -m 644 optovik-backup.service optovik-backup.timer /etc/systemd/system/
+          sudo -n systemctl daemon-reload
+          sudo -n systemctl enable --now optovik-backup.timer
 
           # Старые версии образа копятся — удаляем неиспользуемые старше 3 дней
           # (запущенный сейчас образ не трогается).

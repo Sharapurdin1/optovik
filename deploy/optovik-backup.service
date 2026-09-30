@@ -1,0 +1,13 @@
+# Копия базы (скрипт deploy/backup-db.sh). Запускается таймером optovik-backup.timer.
+# Установка на сервере (один раз):
+#   sudo cp /opt/optovik/optovik-backup.{service,timer} /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now optovik-backup.timer
+[Unit]
+Description=Копия базы Оптовика
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=deploy
+ExecStart=/opt/optovik/backup-db.sh

@@ -1,0 +1,12 @@
+# Каждую ночь в 03:30 по серверному времени (МСК) — отдельно от бэкапа Timeweb (00:15).
+# Persistent: если сервер был выключен в это время — копия сделается при включении.
+[Unit]
+Description=Ежедневная копия базы Оптовика
+
+[Timer]
+OnCalendar=*-*-* 03:30:00
+RandomizedDelaySec=5min
+Persistent=true
+
+[Install]
+WantedBy=timers.target
