@@ -14,8 +14,17 @@ const lastSent = new Map<string, number>();
 let hourStart = Date.now();
 let sentThisHour = 0;
 
-// Шум от ботов-сканеров: запросы к несуществующим Server Actions и т.п.
-const NOISE = [/Server Reference ID/i, /failed-to-find-server-action/i, /Failed to find Server Action/i];
+// Шум, а не поломки:
+// - боты-сканеры: запросы к несуществующим Server Actions;
+// - посетитель ушёл/закрыл вкладку или браузер отменил предзагрузку ссылки,
+//   пока сервер ещё отдавал страницу — React обрывает отрисовку.
+const NOISE = [
+  /Server Reference ID/i,
+  /failed-to-find-server-action/i,
+  /Failed to find Server Action/i,
+  /The destination stream closed early/i,
+  /The destination stream errored while writing data/i,
+];
 
 export async function alertServerError(
   message: string,
