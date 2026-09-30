@@ -19,6 +19,22 @@
 		-Server
 	}
 
+	# Журнал посещений: время, страница, IP, браузер. На сервере —
+	# /opt/optovik/logs/access.log. Старые куски сжимаются и через 30 дней
+	# удаляются. Cookie и пароли Caddy сам пишет как REDACTED.
+	log {
+		output file /var/log/caddy/access.log {
+			mode 644
+			roll_size 20MiB
+			roll_keep 10
+			roll_keep_for 720h
+		}
+	}
+
+	# Не засоряем журнал: скрипты и картинки сайта, проверки доступности.
+	@nolog path /_next/static/* /_next/image /favicon.ico /api/health
+	log_skip @nolog
+
 	reverse_proxy app:3000
 }
 

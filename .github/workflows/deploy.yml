@@ -69,6 +69,13 @@ jobs:
           fi
           printf '%s\n' "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
 
+      # Ошибка в Caddyfile положила бы сайт — проверяем до копирования.
+      - name: Проверить Caddyfile
+        run: |
+          docker run --rm -e DOMAIN=example.com -e REDIRECT_HOSTS=www.example.com \
+            -v "$PWD/deploy/Caddyfile:/etc/caddy/Caddyfile:ro" \
+            caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile
+
       - name: Скопировать конфиги
         run: scp deploy/docker-compose.prod.yml deploy/Caddyfile deploy@${{ secrets.SSH_HOST }}:/opt/optovik/
 
@@ -90,6 +97,10 @@ jobs:
             sleep 5
           done
           [ "$status" = "healthy" ] || { docker compose -f docker-compose.prod.yml logs --tail 80 app; exit 1; }
+
+          # Caddy сам не замечает новый Caddyfile — перечитываем без остановки.
+          # С ошибкой в файле Caddy оставит старые настройки, а деплой упадёт.
+          docker compose -f docker-compose.prod.yml exec -T caddy caddy reload --config /etc/caddy/Caddyfile
 
           # Старые версии образа копятся — удаляем неиспользуемые старше 3 дней
           # (запущенный сейчас образ не трогается).
