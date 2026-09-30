@@ -118,6 +118,7 @@ export function CheckoutModal({
         total: data.total,
         customer: draft.customer,
         status: "Принят",
+        key: data.key,
       };
 
       // Успех: запоминаем данные доставки, сохраняем заказ, чистим корзину.

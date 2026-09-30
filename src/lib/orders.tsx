@@ -33,12 +33,15 @@ export type Order = {
   deliveryFee: number;
   total: number;
   customer: OrderCustomer;
-  status: string; // «Принят», «Собираем», «В пути», «Доставлен»
+  status: string; // «Принят», «Собираем», «В пути», «Доставлен», «Отменён»
+  key?: string; // секрет от сервера: с ним можно отменить заказ и оставить отзыв
+  review?: number; // оценка, если покупатель уже оставил отзыв
 };
 
 type OrdersContextValue = {
   orders: Order[];
   addOrder: (order: Order) => void;
+  updateOrder: (id: string, patch: Partial<Order>) => void;
 };
 
 const OrdersContext = createContext<OrdersContextValue | null>(null);
@@ -55,6 +58,8 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       // Новый заказ показываем сверху.
       addOrder: (order: Order) =>
         ordersStore.set((prev) => [order, ...prev].slice(0, KEEP_ORDERS)),
+      updateOrder: (id: string, patch: Partial<Order>) =>
+        ordersStore.set((prev) => prev.map((o) => (o.id === id ? { ...o, ...patch } : o))),
     }),
     [orders]
   );

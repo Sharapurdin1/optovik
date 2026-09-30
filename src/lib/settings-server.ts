@@ -21,6 +21,7 @@ export async function getSettings(): Promise<Settings> {
       deliveryFee: r.deliveryFee,
       freeDeliveryFrom: r.freeDeliveryFrom,
       contactPhone: r.contactPhone,
+      reviewUrl: r.reviewUrl,
     };
   } catch (e) {
     console.error("Настройки не прочитались, беру значения по умолчанию:", e);
@@ -38,6 +39,7 @@ export async function saveSettings(s: Settings): Promise<void> {
     deliveryFee: s.deliveryFee,
     freeDeliveryFrom: s.freeDeliveryFrom,
     contactPhone: s.contactPhone,
+    reviewUrl: s.reviewUrl,
   };
   await db
     .insert(schema.settings)

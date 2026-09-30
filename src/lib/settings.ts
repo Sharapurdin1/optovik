@@ -8,6 +8,7 @@ export type Settings = {
   deliveryFee: number; // цена доставки, ₽
   freeDeliveryFrom: number; // бесплатная доставка от суммы, ₽
   contactPhone: string; // телефон магазина для покупателей ("" — не показывать)
+  reviewUrl: string; // куда звать довольных покупателей оставить отзыв ("" — никуда)
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -19,6 +20,7 @@ export const DEFAULT_SETTINGS: Settings = {
   deliveryFee: 200,
   freeDeliveryFrom: 2000,
   contactPhone: "",
+  reviewUrl: "",
 };
 
 // Ссылки для связи по номеру магазина: звонок и WhatsApp.

@@ -163,5 +163,48 @@ export async function notifyNewOrder(order: TrustedOrder): Promise<void> {
   if (!sent) console.error(`Заказ ${order.id} сохранён, но уведомление в Telegram не ушло`);
 }
 
+// Покупатель сам отменил заказ на сайте.
+export async function notifyCustomerCancel(o: { id: string; name: string; phone: string }) {
+  const text = [
+    `❌ <b>Покупатель отменил заказ №${escapeHtml(o.id)}</b>`,
+    `👤 ${escapeHtml(o.name)}`,
+    `📞 ${escapeHtml(o.phone)}`,
+    "",
+    "Товары вернулись на склад.",
+  ].join("\n");
+  await sendTelegram(text, { text: "Открыть заказ", url: adminOrderUrl(o.id) }, { retry: true });
+}
+
+// Новый отзыв. Плохая оценка — сразу с телефоном: перезвонить, пока
+// недовольство не ушло в публичный отзыв.
+export async function notifyReview(
+  o: { id: string; name: string; phone: string },
+  rating: number,
+  comment: string
+) {
+  const stars = "★".repeat(rating) + "☆".repeat(5 - rating);
+  const bad = rating <= 3;
+  const lines = [
+    bad
+      ? `⚠️ <b>Плохая оценка ${stars}</b> — заказ №${escapeHtml(o.id)}`
+      : `⭐ <b>Новый отзыв ${stars}</b> — заказ №${escapeHtml(o.id)}`,
+    `👤 ${escapeHtml(o.name)}`,
+  ];
+  if (bad) lines.push(`📞 ${escapeHtml(o.phone)}`);
+  if (comment) lines.push(`💬 ${escapeHtml(comment)}`);
+  lines.push(
+    "",
+    bad
+      ? "Позвоните покупателю и решите вопрос — это лучший способ его вернуть."
+      : "Показать отзыв на сайте можно в админке → Отзывы."
+  );
+  const base = (process.env.APP_URL ?? "").replace(/\/+$/, "");
+  await sendTelegram(
+    lines.join("\n"),
+    { text: "Отзывы в админке", url: `${base}/manage/reviews` },
+    { retry: true }
+  );
+}
+
 // Экранирование для текстов тревог (alerts.ts).
 export { escapeHtml };

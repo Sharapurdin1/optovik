@@ -1,9 +1,13 @@
 import Link from "next/link";
 import { getCatalog } from "@/lib/catalog";
+import { getPublishedReviews } from "@/lib/reviews";
 import { ProductCard } from "./ProductCard";
 
 export async function HomeView() {
-  const { products, categories, hitProducts } = await getCatalog();
+  const [{ products, categories, hitProducts }, reviews] = await Promise.all([
+    getCatalog(),
+    getPublishedReviews(6),
+  ]);
   const sales = products.filter((p) => p.oldPrice && p.oldPrice > p.price);
 
   return (
@@ -69,6 +73,32 @@ export async function HomeView() {
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
             {hitProducts.map((p) => (
               <ProductCard key={p.id} product={p} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Отзывы покупателей — только одобренные владельцем */}
+      {reviews.length > 0 && (
+        <section>
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-xl">⭐</span>
+            <h2 className="text-lg font-bold">Отзывы покупателей</h2>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {reviews.map((r) => (
+              <figure key={r.id} className="rounded-2xl bg-white border border-neutral-200 p-4">
+                <div className="text-amber-400" aria-label={`Оценка ${r.rating} из 5`}>
+                  {"★".repeat(r.rating)}
+                  <span className="text-neutral-300">{"★".repeat(5 - r.rating)}</span>
+                </div>
+                {r.text && (
+                  <blockquote className="mt-2 text-neutral-700 line-clamp-5 whitespace-pre-line">
+                    {r.text}
+                  </blockquote>
+                )}
+                <figcaption className="mt-2 text-sm text-neutral-500">— {r.name}</figcaption>
+              </figure>
             ))}
           </div>
         </section>

@@ -21,6 +21,7 @@ import { InsufficientStockError, changeStock } from "@/lib/stock";
 import { isUniqueViolation } from "@/lib/catalog-admin";
 import { notifyNewOrder, type TrustedOrder, type TrustedItem } from "@/lib/telegram";
 import { formatPhone, normalizePhone } from "@/lib/phone";
+import { newCustomerKey } from "@/lib/customer-key";
 
 // Что принимаем от браузера. Длины ограничены: иначе можно залить в базу
 // мегабайты текста, а слишком длинное сообщение Telegram не примет —
@@ -119,7 +120,7 @@ async function recomputeOrder(
 
 // Сохраняем заказ и списываем остатки одной транзакцией.
 // Время и статус («Принят») ставит база.
-async function saveOrder(order: TrustedOrder): Promise<void> {
+async function saveOrder(order: TrustedOrder, customerKeyHash: string): Promise<void> {
   const c = order.customer;
   await db.transaction(async (tx) => {
     await tx.insert(schema.orders).values({
@@ -133,6 +134,7 @@ async function saveOrder(order: TrustedOrder): Promise<void> {
       itemsTotal: order.itemsTotal,
       deliveryFee: order.deliveryFee,
       total: order.total,
+      customerKeyHash,
     });
     await tx
       .insert(schema.orderItems)
@@ -145,12 +147,15 @@ async function saveOrder(order: TrustedOrder): Promise<void> {
 
 // Номер заказа — метка времени (по порядку). Если два заказа пришли
 // в одну миллисекунду, берём следующий номер.
-async function saveWithFreshId(order: Omit<TrustedOrder, "id">): Promise<TrustedOrder> {
+async function saveWithFreshId(
+  order: Omit<TrustedOrder, "id">,
+  customerKeyHash: string
+): Promise<TrustedOrder> {
   let id = Date.now();
   for (let attempt = 0; ; attempt++) {
     const full = { ...order, id: String(id) };
     try {
-      await saveOrder(full);
+      await saveOrder(full, customerKeyHash);
       return full;
     } catch (e) {
       if (attempt < 3 && isUniqueViolation(e)) {
@@ -196,9 +201,11 @@ export async function POST(req: Request) {
     );
   }
 
+  // Ключ покупателя к заказу: с ним он сам отменит заказ или оставит отзыв.
+  const customerKey = newCustomerKey();
   let order: TrustedOrder;
   try {
-    order = await saveWithFreshId(await recomputeOrder(payload, settings));
+    order = await saveWithFreshId(await recomputeOrder(payload, settings), customerKey.hash);
   } catch (e) {
     if (e instanceof OrderError) {
       return Response.json({ ok: false, error: e.message }, { status: e.status });
@@ -231,6 +238,7 @@ export async function POST(req: Request) {
   return Response.json({
     ok: true,
     id: order.id,
+    key: customerKey.key,
     items: order.items,
     itemsTotal: order.itemsTotal,
     deliveryFee: order.deliveryFee,

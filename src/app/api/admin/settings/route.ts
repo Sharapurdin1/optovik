@@ -6,6 +6,14 @@ import { DEFAULT_SETTINGS, type Settings } from "@/lib/settings";
 function isTime(v: unknown): v is string {
   return typeof v === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(v);
 }
+function toHttpsUrl(v: unknown): string {
+  const s = String(v ?? "").trim().slice(0, 500);
+  try {
+    return new URL(s).protocol === "https:" ? s : "";
+  } catch {
+    return "";
+  }
+}
 function toInt(v: unknown, fallback: number): number {
   const n = Math.floor(Number(v));
   return Number.isFinite(n) && n >= 0 ? n : fallback;
@@ -29,6 +37,8 @@ export async function POST(req: Request) {
       .replace(/[^\d+()\s-]/g, "")
       .trim()
       .slice(0, 30),
+    // Ссылка для отзывов: только https (Яндекс Карты, 2ГИС и т.п.), иначе пусто.
+    reviewUrl: toHttpsUrl(b.reviewUrl),
   };
 
   try {

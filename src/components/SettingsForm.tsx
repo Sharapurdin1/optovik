@@ -141,6 +141,23 @@ export function SettingsForm({ initial }: { initial: Settings }) {
           </p>
         </div>
 
+        <div>
+          <label className="block text-sm font-medium text-neutral-700 mb-1">
+            Ссылка для отзывов
+          </label>
+          <input
+            type="url"
+            value={s.reviewUrl}
+            onChange={(e) => set("reviewUrl", e.target.value)}
+            placeholder="https://yandex.ru/maps/org/..."
+            className="w-full rounded-xl border border-neutral-300 px-4 py-2.5 outline-none focus:border-emerald-500 transition-colors"
+          />
+          <p className="text-xs text-neutral-400 mt-1">
+            Ваша карточка на Яндекс Картах или в 2ГИС. Покупателю, который поставил 4–5 звёзд,
+            предложим оставить отзыв там. Пусто — просто поблагодарим.
+          </p>
+        </div>
+
         {error && <p className="text-sm text-red-500">{error}</p>}
         {saved && <p className="text-sm text-emerald-600">Сохранено ✓</p>}
 

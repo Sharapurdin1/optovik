@@ -133,9 +133,30 @@ export const orders = pgTable(
     total: integer("total").notNull(),
 
     status: text("status").notNull().default("Принят"), // Принят / Собираем / В пути / Доставлен / Отменён
+
+    // Хэш секретного ключа, который получил браузер покупателя при заказе.
+    // С ним покупатель может сам отменить заказ и оставить отзыв (номер
+    // заказа угадать можно, ключ — нет). У старых заказов — null.
+    customerKeyHash: text("customer_key_hash"),
   },
   (t) => [index("orders_created_at_idx").on(t.createdAt)]
 );
+
+// Отзыв покупателя о доставленном заказе (один на заказ).
+export const reviews = pgTable("reviews", {
+  id: serial("id").primaryKey(),
+  orderId: text("order_id")
+    .notNull()
+    .unique()
+    .references(() => orders.id, { onDelete: "cascade" }),
+  rating: integer("rating").notNull(), // 1–5
+  text: text("text").notNull().default(""),
+  name: text("name").notNull(), // имя из заказа (на сайте — сокращённое)
+  published: boolean("published").notNull().default(false), // показывать на главной
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
 
 // Аккаунт клиента (регистрируется при первом входе по телефону).
 export const customers = pgTable("customers", {
@@ -164,6 +185,7 @@ export const settings = pgTable("settings", {
   deliveryFee: integer("delivery_fee").notNull().default(200),
   freeDeliveryFrom: integer("free_delivery_from").notNull().default(2000),
   contactPhone: text("contact_phone").notNull().default(""), // телефон магазина
+  reviewUrl: text("review_url").notNull().default(""), // куда звать довольных (Яндекс Карты / 2ГИС)
 });
 
 // Счётчики частоты запросов (антиспам / защита СМС-баланса).

@@ -76,12 +76,23 @@ export async function getOrderStatuses(
   return out;
 }
 
+// Статус заказа успел смениться (например, покупатель отменяет, а заказ
+// уже начали собирать).
+export class StatusConflictError extends Error {
+  constructor(public current: string) {
+    super(`Заказ уже в статусе «${current}»`);
+  }
+}
+
 // Сменить статус заказа. Отмена возвращает товары на склад, а «воскрешение»
 // отменённого заказа списывает их снова (если товара уже не хватает —
 // InsufficientStockError, статус не меняется).
+// onlyFrom — менять, только если заказ сейчас именно в этом статусе
+// (проверка и смена — под одной блокировкой строки).
 export async function updateOrderStatus(
   id: string,
-  status: OrderStatus
+  status: OrderStatus,
+  { onlyFrom }: { onlyFrom?: OrderStatus } = {}
 ): Promise<void> {
   await db.transaction(async (tx) => {
     const [order] = await tx
@@ -90,6 +101,7 @@ export async function updateOrderStatus(
       .where(eq(schema.orders.id, id))
       .for("update");
     if (!order) throw new Error("Заказ не найден");
+    if (onlyFrom && order.status !== onlyFrom) throw new StatusConflictError(order.status);
     if (order.status === status) return;
 
     const wasCancelled = order.status === CANCELLED;
