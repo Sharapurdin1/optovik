@@ -79,7 +79,7 @@ jobs:
       - name: Скопировать конфиги
         run: |
           scp deploy/docker-compose.prod.yml deploy/Caddyfile deploy/backup-db.sh \
-            deploy/optovik-backup.service deploy/optovik-backup.timer \
+            deploy/setup-offsite-backup.sh deploy/optovik-backup.service deploy/optovik-backup.timer \
             deploy@${{ secrets.SSH_HOST }}:/opt/optovik/
 
       - name: Выкатить новую версию
@@ -117,7 +117,9 @@ jobs:
           [ -n "$reloaded" ] || exit 1
 
           # Ежедневная копия базы (второй бэкап): скрипт и таймер — из репозитория.
-          chmod 700 backup-db.sh
+          # age — шифрование копии, которая уходит на Яндекс Диск.
+          command -v age > /dev/null || sudo -n env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq age
+          chmod 700 backup-db.sh setup-offsite-backup.sh
           sudo -n install -m 644 optovik-backup.service optovik-backup.timer /etc/systemd/system/
           sudo -n systemctl daemon-reload
           sudo -n systemctl enable --now optovik-backup.timer
