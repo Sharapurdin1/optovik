@@ -27,10 +27,15 @@ export async function generateMetadata({
   return {
     title: `${product.title} — ${formatPrice(product.price)}`,
     description,
+    // openGraph страницы заменяет общий целиком — повторяем название сайта,
+    // а без фото товара показываем общую картинку магазина.
     openGraph: {
+      type: "website",
+      locale: "ru_RU",
+      siteName: "Оптовик",
       title: product.title,
       description,
-      images: product.images[0] ? [product.images[0]] : undefined,
+      images: [product.images[0] ?? "/og.png"],
     },
   };
 }

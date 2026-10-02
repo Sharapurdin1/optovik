@@ -20,6 +20,13 @@ const geistSans = Geist({
   subsets: ["latin", "cyrillic"],
 });
 
+const OG_IMAGE = {
+  url: "/og.png",
+  width: 1200,
+  height: 630,
+  alt: "Оптовик — доставка продуктов на дом в Махачкале",
+};
+
 const DESCRIPTION =
   "Доставка продуктов на дом в Махачкале: овощи и фрукты, молочное, мясо, хлеб, напитки. Заказ онлайн, оплата курьеру.";
 
@@ -40,7 +47,10 @@ export async function generateMetadata(): Promise<Metadata> {
       siteName: "Оптовик",
       title: "Оптовик — доставка продуктов на дом",
       description: DESCRIPTION,
+      // Картинка для превью ссылки в WhatsApp, Telegram, VK.
+      images: [OG_IMAGE],
     },
+    twitter: { card: "summary_large_image" },
     formatDetection: { telephone: false },
   };
 }
